@@ -70,6 +70,8 @@ Parquet holds raw data, code holds transformations. Persisting hides the leakage
 **08-26 — Notebooks import constants from `features.py`, never redefine them.**
 A stale `DENYLIST` cell gave 291,815 where the module gave 291,747.
 
+B1: CUT OFF training split is evrth before 2026-01 and validate on 2026-02
+
 ---
 
 ## Open

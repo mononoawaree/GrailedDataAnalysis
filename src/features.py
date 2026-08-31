@@ -33,9 +33,11 @@ def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
     )
     #Create separate column for path from category_path column -> to use it as a feature :)
     #Derive created_month from created_at
+    #Create new column with log sold_price that has dtype - Float64
     df = df.with_columns(
         pl.col('category_path').str.extract(r'\.(.+)', 1).alias('path'),
-        pl.col('created_at').dt.month().alias('created_month')
+        pl.col('created_at').dt.month().alias('created_month'),
+        pl.col('sold_price').log().alias('log_sold_price')
     )
     return df
 
@@ -49,6 +51,7 @@ def cast_data(df: pl.LazyFrame) -> pl.LazyFrame:
 def main():
     df = pl.read_parquet("../data/parquets/sold_listings_20260830.parquet").lazy()
     df = build_features(df)
-    print(df.select(pl.col('primary_designer')).filter(pl.col('primary_designer') == 'unknown').collect().height)
+    #print(df.select(pl.col('primary_designer')).filter(pl.col('primary_designer') == 'unknown').collect().height)
+    print(df.select(pl.col('log_sold_price')).collect().dtypes)
 if __name__ == '__main__':
     main()
