@@ -85,3 +85,17 @@ B1: CUT OFF training split is evrth before 2026-01 and validate on 2026-02
 | — | Top-100 position-0 values — junk not yet in denylist | no |
 | — | Designer composition per year (quantify scrape bias) | before E4 |
 | — | `color` at 2,913 unique — high for a colour field | no |
+
+**(2026-08-31) — snapshot sold_listings_20260830.parquet, 
+train < 2026-02-01, test 2026-02, 57,936 rows. 
+Constant = train mean log price. 
+{'RMSE': 0.9560050805837702, 'MAE': 0.7625944414030207, 'MAPE': 1.0159937979125413}**
+
+**(2026-08-31) — snapshot sold_listings_20260830.parquet, 
+train < 2026-02-01, test 2026-02, 57,936 rows. 
+Mean log price by category X primary_designer, fit on train, unmatched 125 test rows filled with global mean - mean of log price from train 
+and compared to test log price
+{'RMSE': 0.7119398454915198, 'MAE': 0.5444915601807783, 'MAPE': 0.6556966058010049}
+if evaluate for sold_price > 30 we get
+{'RMSE': 0.659, 'MAPE': 0.491} 
+MAPE is unstable because it has enormous errors for cheap items => keep RMSE and MAE from now on**

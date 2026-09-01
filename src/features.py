@@ -37,7 +37,8 @@ def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
     df = df.with_columns(
         pl.col('category_path').str.extract(r'\.(.+)', 1).alias('path'),
         pl.col('created_at').dt.month().alias('created_month'),
-        pl.col('sold_price').log().alias('log_sold_price')
+        pl.col('sold_price').log().alias('log_sold_price'),
+        pl.col('sold_price').log().mean().alias('mean_log_sold_price')
     )
     return df
 
