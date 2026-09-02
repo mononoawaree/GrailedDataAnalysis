@@ -98,7 +98,7 @@ and compared to test log price
 {'RMSE': 0.7119398454915198, 'MAE': 0.5444915601807783, 'MAPE': 0.6556966058010049, 'WITHIN_20%': 0.2518986467826567}
 if evaluate for sold_price > 30 we get
 {'RMSE': 0.659, 'MAPE': 0.491} 
-MAPE is unstable because it has enormous errors for cheap items => keep RMSE and MAE from now on**
+MAPE is unstable because it has enormous errors for cheap items**
 
 **(2026-09-01) — snapshot sold_listings_20260830.parquet, 
 train < 2026-02-01, test 2026-02, 57,936 rows.
@@ -121,3 +121,20 @@ department	        0	        0%
 After scramble test (shuffled = train.with_columns(pl.col('log_sold_price').shuffle(1234)); train_base_lightgbm(shuffled, test))
 I got {'RMSE': 1.0595973040817848, 'MAE': 0.8372516107034856, 'MAPE': 0.9008734215763111, 'WITHIN_20%': 0.1705675227837614} = model trained on mean log price
 => No leakages found**
+
+**(2026-09-02) — snapshot sold_listings_20260901.parquet,
+Walk forward on 12 months showed that lightgbm model trained on 11 features shows stable metrics. Therefore current features perform uniformly regardless data volume - model trained on 3.5mil rows = model trained on 4.4mil rows
+The model has saturated on these eleven features, and additional months add nothing. Therefore further gains must to come from better features.
+{'RMSE': 0.6413174388071619, 'MAE': 0.484528442330482, 'MAPE': 0.6063601770185226, 'WITHIN_20%': 0.28332837475996, 'start_fold': datetime.datetime(2025, 2, 1, 0, 0), 'end_fold': datetime.datetime(2025, 3, 1, 0, 0)}
+{'RMSE': 0.6445476676183405, 'MAE': 0.48740633762378327, 'MAPE': 0.6384316961340354, 'WITHIN_20%': 0.28124806230390514, 'start_fold': datetime.datetime(2025, 3, 1, 0, 0), 'end_fold': datetime.datetime(2025, 4, 1, 0, 0)}
+{'RMSE': 0.6449838463944545, 'MAE': 0.4860430438375963, 'MAPE': 0.6235460093397521, 'WITHIN_20%': 0.2847671868953953, 'start_fold': datetime.datetime(2025, 4, 1, 0, 0), 'end_fold': datetime.datetime(2025, 5, 1, 0, 0)}
+{'RMSE': 0.6500448178763011, 'MAE': 0.48630176674650466, 'MAPE': 0.64156644658406, 'WITHIN_20%': 0.2854253389531925, 'start_fold': datetime.datetime(2025, 5, 1, 0, 0), 'end_fold': datetime.datetime(2025, 6, 1, 0, 0)}
+{'RMSE': 0.6400537694367767, 'MAE': 0.48360656616090253, 'MAPE': 0.6099621397510896, 'WITHIN_20%': 0.28697362268614024, 'start_fold': datetime.datetime(2025, 6, 1, 0, 0), 'end_fold': datetime.datetime(2025, 7, 1, 0, 0)}
+{'RMSE': 0.6434049627367535, 'MAE': 0.4834992482370238, 'MAPE': 0.6122435033827054, 'WITHIN_20%': 0.2907307477604402, 'start_fold': datetime.datetime(2025, 7, 1, 0, 0), 'end_fold': datetime.datetime(2025, 8, 1, 0, 0)}
+{'RMSE': 0.6661330525854595, 'MAE': 0.48986574778952047, 'MAPE': 0.7274720134179843, 'WITHIN_20%': 0.28626908140116125, 'start_fold': datetime.datetime(2025, 8, 1, 0, 0), 'end_fold': datetime.datetime(2025, 9, 1, 0, 0)}
+{'RMSE': 0.6393158186227345, 'MAE': 0.4828647174381569, 'MAPE': 0.6120807070402131, 'WITHIN_20%': 0.2865749703817147, 'start_fold': datetime.datetime(2025, 9, 1, 0, 0), 'end_fold': datetime.datetime(2025, 10, 1, 0, 0)}
+{'RMSE': 0.636527744641391, 'MAE': 0.4837276380934099, 'MAPE': 0.588875304652317, 'WITHIN_20%': 0.2822684299220245, 'start_fold': datetime.datetime(2025, 10, 1, 0, 0), 'end_fold': datetime.datetime(2025, 11, 1, 0, 0)}
+{'RMSE': 0.6447891690399983, 'MAE': 0.4875499580737756, 'MAPE': 0.6108689819820472, 'WITHIN_20%': 0.2811882021290024, 'start_fold': datetime.datetime(2025, 11, 1, 0, 0), 'end_fold': datetime.datetime(2025, 12, 1, 0, 0)}
+{'RMSE': 0.6365924477914696, 'MAE': 0.4815015030188194, 'MAPE': 0.573992819409147, 'WITHIN_20%': 0.2858257862227665, 'start_fold': datetime.datetime(2025, 12, 1, 0, 0), 'end_fold': datetime.datetime(2026, 1, 1, 0, 0)}
+{'RMSE': 0.6501872636503928, 'MAE': 0.4908906388413077, 'MAPE': 0.5988557183508603, 'WITHIN_20%': 0.2828154439692556, 'start_fold': datetime.datetime(2026, 1, 1, 0, 0), 'end_fold': datetime.datetime(2026, 2, 1, 0, 0)}
+{'RMSE': 0.6420129540551772, 'MAE': 0.48514603749676366, 'MAPE': 0.5675015915275922, 'WITHIN_20%': 0.2874551228942281, 'start_fold': datetime.datetime(2026, 2, 1, 0, 0), 'end_fold': datetime.datetime(2026, 3, 1, 0, 0)}
