@@ -88,19 +88,36 @@ B1: CUT OFF training split is evrth before 2026-01 and validate on 2026-02
 
 **(2026-08-31) — snapshot sold_listings_20260830.parquet, 
 train < 2026-02-01, test 2026-02, 57,936 rows. 
-Constant = train mean log price. 
-{'RMSE': 0.9560050805837702, 'MAE': 0.7625944414030207, 'MAPE': 1.0159937979125413}**
+Constant = train mean log price.
+{'RMSE': 1.0595973040817848, 'MAE': 0.8372516107034856, 'MAPE': 0.9008734215763111, 'WITHIN_20%': 0.1705675227837614}**
 
 **(2026-08-31) — snapshot sold_listings_20260830.parquet, 
 train < 2026-02-01, test 2026-02, 57,936 rows. 
 Mean log price by category X primary_designer, fit on train, unmatched 125 test rows filled with global mean - mean of log price from train 
 and compared to test log price
-{'RMSE': 0.7119398454915198, 'MAE': 0.5444915601807783, 'MAPE': 0.6556966058010049}
+{'RMSE': 0.7119398454915198, 'MAE': 0.5444915601807783, 'MAPE': 0.6556966058010049, 'WITHIN_20%': 0.2518986467826567}
 if evaluate for sold_price > 30 we get
 {'RMSE': 0.659, 'MAPE': 0.491} 
 MAPE is unstable because it has enormous errors for cheap items => keep RMSE and MAE from now on**
 
 **(2026-09-01) — snapshot sold_listings_20260830.parquet, 
 train < 2026-02-01, test 2026-02, 57,936 rows.
-Model trained on 11 features, fit on train, gives ~10% increase in accuracy over category X primary_designer
-{'RMSE': 0.6420129540551772, 'MAE': 0.48514603749676366, 'MAPE': 0.5675015915275922}
+Model trained on 11 features, fit on train, gives ~10% increase(RMSE metric) in accuracy over category X primary_designer
+{'RMSE': 0.6420129540551772, 'MAE': 0.48514603749676366, 'MAPE': 0.5675015915275922, 'WITHIN_20%': 0.2874551228942281}
+importances = regressor.feature_importances_ 
+importance_type='gain' 
+Feature  	        Gain	    Share
+primary_designer	7,328,808	58.1%
+path	            2,860,361	22.7%
+color	            809,460	    6.4%
+category		    735,742     5.8%
+size	            419,243	    3.3%
+location	        97,619	    0.8%
+photo_count	        87,382	    0.7%
+condition	        38,184	    0.3%
+measurement_count	23,005	    0.2%
+created_month	    3,785	    0.03%
+department	        0	        0%
+After scramble test (shuffled = train.with_columns(pl.col('log_sold_price').shuffle(1234)); train_base_lightgbm(shuffled, test))
+I got {'RMSE': 1.0595973040817848, 'MAE': 0.8372516107034856, 'MAPE': 0.9008734215763111, 'WITHIN_20%': 0.1705675227837614} = model trained on mean log price
+=> No leakages found**
