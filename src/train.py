@@ -1,5 +1,6 @@
 import polars as pl
-from src.features import build_features
+from lightgbm import LGBMRegressor
+from src.features import build_features, FEATURES, TARGET, cast_data
 from src.evaluate import evaluate
 
 TRAIN_END = pl.lit('2026-02-01').str.to_datetime(time_zone='UTC')
@@ -13,16 +14,18 @@ def split(df: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]:
 def main():
     df = pl.read_parquet("../data/parquets/sold_listings_20260830.parquet").lazy()
     df = build_features(df)
+    df = cast_data(df)
     train, test = split(df)
-    #mean by designer × category - log_sold_price_right
-    lookup = train.group_by(pl.col('primary_designer'), pl.col('category')).agg(pl.col('log_sold_price').mean())
-    joined = test.join(lookup, on=['primary_designer', 'category'], how='left')
-    #125 nulls
-    #print(y_pred.null_count().collect())
-    global_log_mean = train.select(pl.col('log_sold_price').mean()).collect()[0][0].item()
-    joined = joined.with_columns(pl.col('log_sold_price_right').fill_null(global_log_mean))
-    y_pred = joined.select(pl.col('log_sold_price_right')).collect().to_series().to_list()
-    y_true = joined.select(pl.col('log_sold_price')).collect().to_series().to_list()
-    print(evaluate(y_true, y_pred))
+    f = train.select(FEATURES).collect()
+    t = train.select(TARGET).collect()
+    f_array = f.to_pandas()
+    t_array = t.to_pandas()
+    regressor = LGBMRegressor()
+    regressor.fit(f_array, t_array)
+    ft = test.select(FEATURES).collect().to_pandas()
+    y_pred = regressor.predict(ft)
+    y_true = test.select(TARGET).collect().to_pandas()
+    result = evaluate(y_true, y_pred)
+    print(result)
 if __name__ == "__main__":
     main()

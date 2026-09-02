@@ -2,7 +2,7 @@ import polars as pl
 import polars.selectors as cs
 
 FEATURES = ['department', 'category', 'path', 'color', 'condition', 'size', 'location', 'photo_count', 'measurement_count', 'primary_designer', 'created_month']
-TARGET = 'sold_price'
+TARGET = 'log_sold_price'
 # NOT IN FEATURE LIST - title (not in v1, need a comparison point later),
 # category_path/size/path_size - all derived from other columns, styles - reasonable to include for training only since
 # 2025-07-01 or 2025-08-01  (see notebook), country_of_origin - same situation as with styles feature,
@@ -38,7 +38,6 @@ def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
         pl.col('category_path').str.extract(r'\.(.+)', 1).alias('path'),
         pl.col('created_at').dt.month().alias('created_month'),
         pl.col('sold_price').log().alias('log_sold_price'),
-        pl.col('sold_price').log().mean().alias('mean_log_sold_price')
     )
     return df
 

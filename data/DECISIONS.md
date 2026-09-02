@@ -99,3 +99,8 @@ and compared to test log price
 if evaluate for sold_price > 30 we get
 {'RMSE': 0.659, 'MAPE': 0.491} 
 MAPE is unstable because it has enormous errors for cheap items => keep RMSE and MAE from now on**
+
+**(2026-09-01) — snapshot sold_listings_20260830.parquet, 
+train < 2026-02-01, test 2026-02, 57,936 rows.
+Model trained on 11 features, fit on train, gives ~10% increase in accuracy over category X primary_designer
+{'RMSE': 0.6420129540551772, 'MAE': 0.48514603749676366, 'MAPE': 0.5675015915275922}
