@@ -138,3 +138,6 @@ The model has saturated on these eleven features, and additional months add noth
 {'RMSE': 0.6365924477914696, 'MAE': 0.4815015030188194, 'MAPE': 0.573992819409147, 'WITHIN_20%': 0.2858257862227665, 'start_fold': datetime.datetime(2025, 12, 1, 0, 0), 'end_fold': datetime.datetime(2026, 1, 1, 0, 0)}
 {'RMSE': 0.6501872636503928, 'MAE': 0.4908906388413077, 'MAPE': 0.5988557183508603, 'WITHIN_20%': 0.2828154439692556, 'start_fold': datetime.datetime(2026, 1, 1, 0, 0), 'end_fold': datetime.datetime(2026, 2, 1, 0, 0)}
 {'RMSE': 0.6420129540551772, 'MAE': 0.48514603749676366, 'MAPE': 0.5675015915275922, 'WITHIN_20%': 0.2874551228942281, 'start_fold': datetime.datetime(2026, 2, 1, 0, 0), 'end_fold': datetime.datetime(2026, 3, 1, 0, 0)}
+
+Useful flags AW,FW/ SS or A/W, F/W, S/S and then year 00 98 19 and can be 2016 1998 as well or year and season can be vice versa etc. ALSO there can be only a year 05 16 98 1996 etc. OR it acn be spring summer or fall winter; 
+2000s; Archive; 90s 90's; 00s 00's; Y2K; vintage?; Selvedge; Rare?; streetwear, grails, street, designer, japan, france; Core; .925(metal probe)?; by Hedi Slimane, Raf Simons, Richard Avedon etc.; Designer; reworked; patchwork; patch; runway; 

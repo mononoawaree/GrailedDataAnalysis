@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, UTC
 import polars as pl
+from PIL.Image import preinit
 from dateutil.relativedelta import relativedelta
 from lightgbm import LGBMRegressor
 from src.features import build_features, FEATURES, TARGET, cast_data
@@ -24,6 +25,7 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> dict:
     ft = test.select(FEATURES).collect().to_pandas()
     y_pred = regressor.predict(ft)
     y_true = test.select(TARGET).collect().to_pandas()
+    importances = regressor.feature_importances_
     result = evaluate(y_true, y_pred)
     return result
 
@@ -43,12 +45,14 @@ def train_w_folds(df: pl.LazyFrame, start: datetime, end: datetime) -> list:
 def main():
     df = pl.read_parquet("../data/parquets/sold_listings_20260901.parquet").lazy()
     df = build_features(df)
-    df = cast_data(df)
     start = datetime(2026, 2, 1, tzinfo=UTC)
     start = start - relativedelta(months=12)
     end = datetime(2026, 3, 1, tzinfo=UTC)
-    l = train_w_folds(df, start, end)
-    for metric in l:
-        print(metric)
+    train, test = split(df, TRAIN_END, TEST_END)
+    res = train_lightgbm(train, test)
+    print(res)
+    #l = train_w_folds(df, start, end)
+    #for metric in l:
+        #print(metric)
 if __name__ == "__main__":
     main()
