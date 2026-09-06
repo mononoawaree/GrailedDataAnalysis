@@ -11,6 +11,24 @@ TARGET = 'log_sold_price'
 DENYLIST = ["Designer", "Luxury", "Rare", "Streetwear", "Stickers", "Made In Usa",
             "Band T Shirt", "Soccer Jersey", "Archival Clothing", "Vintage",
             "Japanese Brand", "Other", "Band Tees", "MLB", "NFL", "Hat Club", "Rap Tees", "Jean", "Hype Beast"]
+
+ICARELIST = ['Helmut Lang', 'Comme des Garcons', 'Christian Dior Monsieur', 'Chanel', 'Cartier', '20471120', 'CDG by Comme des Garcons',
+               'Acne Studios', 'Our Legacy', 'Yohji Yamamoto', 'Yves Saint Laurent', 'Kapital','Kansai Yamamoto' 'Comme des Garcons Homme Plus',
+               'John Galliano', 'Issey Miyake', 'Hysteric Glamour', 'Homme Plisse Issey Miyake', 'Hermes', 'Gucci',
+               'Dior', 'Balenciaga', 'Y\'s', 'Number (N)ine', 'Maison Margiela', 'Prada', 'Guidi', 'Kiko Kostadinov',
+               'Kith', 'Martine Rose', 'Miu Miu', 'Moncler', 'Online Ceramics', 'Rick Owens', 'Rick Owens Drkshdw',
+               'Satoshi Nakamoto', 'Stone Island', 'Takashi Murakami', 'Takahiromiyashita The Soloist.', 'Vetements',
+               'Y\'s for Men', 'Isabel Marant', 'Ann Demeulemeester', 'Bottega Veneta', 'Cav Empt', 'Celine', 'Chrome Hearts',
+               'Dries Van Noten', 'Enfants Riches Deprimes', 'Jacquemus', 'Maison MIHARA YASUHIRO', 'Katharine Hamnett London',
+               'A.P.C.', 'Carol Christian Poell', 'Comme des Garcons Homme', 'Dirk Bikkembergs', 'Dolce & Gabbana', 'Jean Paul Gaultier',
+               'Jun Takahashi', 'Junya Watanabe', 'Raf Simons', 'Raf Simons DRKSHDW', 'Martin Margiela', 'Vivienne Westwood']
+
+ARCHIVELIST = ['Helmut Lang', 'Comme des Garcons', 'Junya Watanabe', 'Yohji Yamamoto', "Y's", "Y's for Men", 'Issey Miyake',
+               'Homme Plisse Issey Miyake', 'Kansai Yamamoto','Number (N)ine', 'Jun Takahashi','Maison Margiela', 'Ann Demeulemeester',
+               'Dirk Bikkembergs', 'Dries Van Noten', 'Carol Christian Poell', '20471120', 'Jean Paul Gaultier', 'Katharine Hamnett London',
+               'John Galliano', 'Undercover', 'Raf Simons', 'Raf Simons DRKSHDW', 'Martin Margiela', 'Vivienne Westwood']
+
+CATEGORICAL = ['department', 'category', 'path', 'color', 'condition', 'size', 'location', 'primary_designer']
 SEASON_YEAR = r'(?i)\b(?P<season>ss|s/s|fw|f/w|aw|a/w|spring[/\s-]?summer|fall[/\s-]?winter|autumn[/\s-]?winter)[/\s-]?(?P<year>(?:19|20)\d{2}|\d{2})\b'
 YEAR_ONLY = r'\b(?P<yearonly>19[89]\d|20[0-2]\d)\b'
 def build_features(df : pl.LazyFrame) -> pl.LazyFrame:
@@ -34,6 +52,11 @@ def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
     df = df.with_columns(
         pl.col('primary_designer').list.first().fill_null('unknown')
     )
+    df = df.with_columns(
+        pl.col('primary_designer').is_in(ARCHIVELIST).alias('brands_icare')
+    )
+    #Add a count title column to later evaluate on both unique and same title listings
+    df = df.filter(pl.col('title').is_unique()).group_by(pl.col('title')).agg(pl.col('title').count().alias('title_count'))
     #Create separate column for path from category_path column -> to use it as a feature :)
     #Derive created_month from created_at
     #Create new column with log sold_price that has dtype - Float64
@@ -46,14 +69,10 @@ def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
         pl.col('title').str.extract_groups(SEASON_YEAR).struct.field('season', 'year'),
         pl.col('title').str.extract_groups(YEAR_ONLY).struct.field('yearonly')
     ).with_columns(
+        pl.col('year').cast(pl.Int32),
+        pl.col('yearonly').cast(pl.Int32)
+    ).with_columns(
         pl.coalesce(pl.col('year'), pl.col('yearonly')).alias('year')
-    )
-    return df
-
-def cast_data(df: pl.LazyFrame) -> pl.LazyFrame:
-    df = df.with_columns(
-        cs.by_name('department', 'category', 'path', 'color', 'condition', 'size', 'location', 'primary_designer').cast(pl.Categorical),
-        cs.by_name('photo_count', 'measurement_count', 'created_month', 'year').cast(pl.Int32)
     ).with_columns(
         pl.col('season').str.replace_all('/', '')
     ).with_columns(
@@ -74,9 +93,16 @@ def cast_data(df: pl.LazyFrame) -> pl.LazyFrame:
     )
     return df
 
+def cast_data(df: pl.LazyFrame) -> pl.LazyFrame:
+    df = df.with_columns(
+        cs.by_name(CATEGORICAL).cast(pl.Categorical),
+        cs.by_name('photo_count', 'measurement_count', 'created_month').cast(pl.Int32),
+        pl.col('title').fill_null(''))
+    return df
+
 def main():
     df = pl.read_parquet("../data/parquets/sold_listings_20260830.parquet").lazy()
     df = build_features(df)
-    #print(df.select(pl.col('season'), pl.col('year'), pl.col('title'), pl.col('primary_designer'))filter(pl.col('year').is_not_null()).sort(pl.col('year'), descending=True).collect())
+    print(df.select(pl.col('primary_designer'), pl.col('year')).filter(pl.col('year') == 2003).sort(pl.col('primary_designer'), descending=True).collect())
 if __name__ == '__main__':
     main()
