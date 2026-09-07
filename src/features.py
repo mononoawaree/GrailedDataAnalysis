@@ -53,10 +53,8 @@ def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
         pl.col('primary_designer').list.first().fill_null('unknown')
     )
     df = df.with_columns(
-        pl.col('primary_designer').is_in(ARCHIVELIST).alias('brands_icare')
+        pl.col('primary_designer').is_in(ARCHIVELIST).alias('is_archive')
     )
-    #Add a count title column to later evaluate on both unique and same title listings
-    df = df.filter(pl.col('title').is_unique()).group_by(pl.col('title')).agg(pl.col('title').count().alias('title_count'))
     #Create separate column for path from category_path column -> to use it as a feature :)
     #Derive created_month from created_at
     #Create new column with log sold_price that has dtype - Float64

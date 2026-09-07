@@ -23,7 +23,7 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
     t = train.select(TARGET).collect()
     f_array = f.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
     #get ndarray to work with lightgbm
-    t_array = t.to_pandas()
+    t_array = t.to_numpy()
     vectorizer, X_train, X_test = fit_title_feature(train, test)
     X_train_full = hstack([csr_matrix(f_array), X_train]).tocsr()
     regressor = LGBMRegressor(importance_type='gain')
@@ -32,70 +32,64 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
     ft_array = ft.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
     X_test_full = hstack([csr_matrix(ft_array), X_test]).tocsr()
     y_pred = regressor.predict(X_test_full)
-    importances = regressor.feature_importances_
-    text_feature_names = list(vectorizer.get_feature_names_out())
-    all_feature_names = FEATURES + text_feature_names
-    importance_df = pl.DataFrame({
-        "feature": all_feature_names,
-        "importance": regressor.feature_importances_
-    })
-    top_100_df = importance_df.sort("importance", descending=True).head(100)
-    bottom_100_df = importance_df.sort(pl.col("importance") != 0.0, descending=False).head(100)
-    print('TOP 100 HIGHEST GAIN FEATURES')
-    print(top_100_df)
-    print('\nTOP 100 LOWEST GAIN FEATURES')
-    print(bottom_100_df)
     return y_pred
 
-def train_w_folds(df: pl.LazyFrame, start: datetime, end: datetime, segment: str=None) -> list:
-    metrics = []
-    result = {}
-    opt = input('Evaluate on segment - 1, Evaluate on everything except segment - 2, Evaluate per decile - 3, 0 - to exit')
-    len_sample = 0
+def train_w_folds(df: pl.LazyFrame, start: datetime, end: datetime) -> list:
+    folds = []
     while start < end:
         train_end = start
         test_end = start + relativedelta(months=1)
         traindf, testdf = split(df, train_end, test_end)
-        if segment is not None:
-            y_pred = train_lightgbm(traindf, testdf)
-            cols = testdf.select(TARGET, 'sold_price', segment).collect()
-            y_true = cols[TARGET].to_numpy()
-            mask = cols[segment].to_numpy()
-            price = cols['sold_price'].to_numpy()
-            if opt == '1':
-                result = evaluate(y_true[mask], y_pred[mask])
-                len_sample = len(y_true[mask])
-            elif opt == '2':
-                result = evaluate(y_true[~mask], y_pred[~mask])
-                len_sample = len(y_true[~mask])
-            elif opt == '3':
-                for lo, hi in [(0, 25), (25, 50), (50, 100), (100, 250), (250, 500), (500, 1000), (1000, 10 ** 9)]:
-                    m = (price >= lo) & (price < hi)
-                    result = evaluate(y_true[m], y_pred[m])
-            elif opt == '0':
-                break
-            else:
-                print('Invalid option, try again')
-                continue
-        else:
-            print('Evaluating for everything')
-            y_pred = train_lightgbm(traindf, testdf)
-            y_true = testdf.select(TARGET).collect().to_series().to_numpy()
-            result = evaluate(y_true, y_pred)
-        result['start_fold'] = datetime(train_end.year, train_end.month, train_end.day)
-        result['end_fold'] = datetime(test_end.year, test_end.month, test_end.day)
-        result['len_sample'] = len_sample
-        metrics.append(result)
+        y_pred = train_lightgbm(traindf, testdf)
+        lookup = traindf.select(pl.col('title')).group_by(pl.col('title')).agg(pl.col('title').count().alias('count_title'))
+        joined = testdf.join(lookup, on=["title"], how="left")
+        title_count = joined.select(pl.col('count_title')).collect().to_series().to_numpy()
+        cols = testdf.select(TARGET,'sold_price', 'is_archive').collect()
+        fold = {
+            'y_true': cols[TARGET].to_numpy(),
+            'y_pred': y_pred,
+            'archive': cols['is_archive'].to_numpy(),
+            'price': cols['sold_price'].to_numpy(),
+            'title_count': title_count,
+            'start': train_end,
+        }
+        folds.append(fold)
         start = start + relativedelta(months=1)
-    return metrics
+    return folds
 
 def fit_title_feature(train: pl.LazyFrame, test: pl.LazyFrame):
-    vectorizer = TfidfVectorizer(min_df=5, ngram_range=(1,2))
+    vectorizer = TfidfVectorizer(min_df=5, ngram_range=(1,2), max_features=60000)
     train_titles = train.select(pl.col('title')).collect().get_column("title").to_numpy()
     test_titles = test.select(pl.col('title')).collect().get_column("title").to_numpy()
     X_train = vectorizer.fit_transform(train_titles)
     X_test = vectorizer.transform(test_titles)
     return vectorizer, X_train, X_test
+
+def report(folds: list, segment: str=None) -> list:
+    metrics = []*len(folds)
+    for fold in folds:
+        y_true = fold['y_true']
+        y_pred = fold['y_pred']
+        if segment is None:
+            metrics.append(evaluate(y_true, y_pred))
+            print(len(y_true))
+        elif segment == 'archivelist':
+            mask = fold['archive']
+            metrics.append(evaluate(y_true[mask], y_pred[mask]))
+            print(len(y_true[mask]))
+        elif segment == 'same_titles':
+            mask = fold['title_count']
+            metrics.append(evaluate(y_true[(mask > 11) & (mask < 100)], y_pred[(mask > 11) & (mask < 100)]))
+            print(len(y_true[(mask > 11) & (mask < 100)]))
+        elif segment == 'unique_titles':
+            mask = fold['title_count']
+            metrics.append(evaluate(y_true[mask == 1], y_pred[mask == 1]))
+            print(len(y_true[mask == 1]))
+        elif segment == 'unseen_titles':
+            mask = fold['title_count']
+            metrics.append(evaluate(y_true[np.isnan(mask)], y_pred[np.isnan(mask)]))
+            print(len(y_true[np.isnan(mask)]))
+    return metrics
 
 def main():
     df = pl.read_parquet("../data/parquets/sold_listings_20260901.parquet").lazy()
