@@ -1,5 +1,5 @@
-import clip
 import numpy as np
+import open_clip
 import torch
 from torch.utils.data import DataLoader
 import polars as pl
@@ -13,7 +13,9 @@ ids = ids_keys['id'].to_numpy()
 keys = ids_keys['photo_key'].to_numpy()
 
 def main():
-    model, preprocess = clip.load("ViT-B/32", device=device)
+    model, _, preprocess = open_clip.create_model_and_transforms(
+        'ViT-B-32', pretrained='laion2b_s34b_b79k'
+    )
     dataset = ImagesOnDiscDataset(keys, ids, preprocess)
     loader = DataLoader(dataset, batch_size=100, num_workers=8, shuffle=False, pin_memory=True)
     images, idxs, ok = next(iter(loader))
