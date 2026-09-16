@@ -9,13 +9,10 @@ import clip
 from PIL import Image
 
 #Util class for DataLoader
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model, preprocess = clip.load("ViT-B/32", device=device)
 ROOT = Path(r"D:\GrailedImages")
 
 class ImagesOnDiscDataset(Dataset):
-    def __init__(self, photo_keys, ids, transform=preprocess, target_transform=None):
+    def __init__(self, photo_keys, ids, transform=None, target_transform=None):
         self.photo_keys = photo_keys
         self.ids = ids
         self.transform = transform
