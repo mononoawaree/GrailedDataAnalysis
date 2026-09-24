@@ -322,4 +322,25 @@ Top 100 gain features
 │ streetwear        ┆ 1995.506042   │
 │ north             ┆ 1933.468964   │
 │ chuck             ┆ 1809.018005   │
- 
+
+Embeddings coverage 09/19/2026 - 99.7%
+4331899
+4345274
+ok,sum() / embbeds length 
+
+.8980160115951862 - PCA 256(was 512) components at 90% retained variance
+(3354978, 60000) (3354978, 256) (73946, 60000) (73946, 256)
+13 Folds with v32 embeddings - slightly worse performance
+{'RMSE': 0.6214677856051926, 'MAE': 0.4711154136650995, 'MAPE': 0.5906452399825808, 'WITHIN_20%': 0.28898114840559325, 'start_fold': datetime.datetime(2025, 2, 1, 0, 0), 'end_fold': datetime.datetime(2025, 3, 1, 0, 0), 'len_sample': 73946}
+{'RMSE': 0.6233711482909061, 'MAE': 0.4718708350682412, 'MAPE': 0.6172573786817657, 'WITHIN_20%': 0.28839118518794105, 'start_fold': datetime.datetime(2025, 3, 1, 0, 0), 'end_fold': datetime.datetime(2025, 4, 1, 0, 0), 'len_sample': 80637}
+{'RMSE': 0.6271672807868941, 'MAE': 0.4752756906672267, 'MAPE': 0.6086526113830611, 'WITHIN_20%': 0.28542499677544175, 'start_fold': datetime.datetime(2025, 4, 1, 0, 0), 'end_fold': datetime.datetime(2025, 5, 1, 0, 0), 'len_sample': 77530}
+{'RMSE': 0.6319331736795601, 'MAE': 0.47456875493204903, 'MAPE': 0.6220715294940503, 'WITHIN_20%': 0.28974462698837317, 'start_fold': datetime.datetime(2025, 5, 1, 0, 0), 'end_fold': datetime.datetime(2025, 6, 1, 0, 0), 'len_sample': 76633}
+{'RMSE': 0.6209270774995651, 'MAE': 0.471099010339403, 'MAPE': 0.5924205935801646, 'WITHIN_20%': 0.28867893390543775, 'start_fold': datetime.datetime(2025, 6, 1, 0, 0), 'end_fold': datetime.datetime(2025, 7, 1, 0, 0), 'len_sample': 72714}
+{'RMSE': 0.6271224146279661, 'MAE': 0.4742880061709387, 'MAPE': 0.605115966890599, 'WITHIN_20%': 0.2878598580504532, 'start_fold': datetime.datetime(2025, 7, 1, 0, 0), 'end_fold': datetime.datetime(2025, 8, 1, 0, 0), 'len_sample': 75238}
+{'RMSE': 0.6540749657699467, 'MAE': 0.4779513591128111, 'MAPE': 0.7959788401986087, 'WITHIN_20%': 0.290652516630138, 'start_fold': datetime.datetime(2025, 8, 1, 0, 0), 'end_fold': datetime.datetime(2025, 9, 1, 0, 0), 'len_sample': 78021}
+{'RMSE': 0.6196638617372512, 'MAE': 0.4698621444486044, 'MAPE': 0.599403101593989, 'WITHIN_20%': 0.29109717687173114, 'start_fold': datetime.datetime(2025, 9, 1, 0, 0), 'end_fold': datetime.datetime(2025, 10, 1, 0, 0), 'len_sample': 69214}
+{'RMSE': 0.6169743448030733, 'MAE': 0.47040264853283104, 'MAPE': 0.5755827279278753, 'WITHIN_20%': 0.2861529233669418, 'start_fold': datetime.datetime(2025, 10, 1, 0, 0), 'end_fold': datetime.datetime(2025, 11, 1, 0, 0), 'len_sample': 70022}
+{'RMSE': 0.6243352666872197, 'MAE': 0.47409999673300013, 'MAPE': 0.5947097952525807, 'WITHIN_20%': 0.28584451830970115, 'start_fold': datetime.datetime(2025, 11, 1, 0, 0), 'end_fold': datetime.datetime(2025, 12, 1, 0, 0), 'len_sample': 71301}
+{'RMSE': 0.6152240752580589, 'MAE': 0.46799353419824874, 'MAPE': 0.5569710643361546, 'WITHIN_20%': 0.2913835098437647, 'start_fold': datetime.datetime(2025, 12, 1, 0, 0), 'end_fold': datetime.datetime(2026, 1, 1, 0, 0), 'len_sample': 74311}
+{'RMSE': 0.6293001190861, 'MAE': 0.4767746660656404, 'MAPE': 0.5859739903245935, 'WITHIN_20%': 0.2859706313365433, 'start_fold': datetime.datetime(2026, 1, 1, 0, 0), 'end_fold': datetime.datetime(2026, 2, 1, 0, 0), 'len_sample': 66874}
+{'RMSE': 0.6198643922762364, 'MAE': 0.47118685990071124, 'MAPE': 0.5516293307805444, 'WITHIN_20%': 0.290907207953604, 'start_fold': datetime.datetime(2026, 2, 1, 0, 0), 'end_fold': datetime.datetime(2026, 3, 1, 0, 0), 'len_sample': 57936}

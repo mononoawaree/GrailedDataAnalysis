@@ -2,6 +2,7 @@ from datetime import datetime, UTC
 
 import numpy as np
 import polars as pl
+import sklearn
 from dateutil.relativedelta import relativedelta
 from lightgbm import LGBMRegressor
 from scipy.sparse import hstack, csr_matrix
@@ -13,24 +14,35 @@ from src.evaluate import evaluate
 TRAIN_END = datetime(2026, 2, 1, tzinfo=UTC) #pl.lit('2026-02-01').str.to_datetime(time_zone='UTC')
 TEST_END = datetime(2026, 3, 1, tzinfo=UTC) #pl.lit('2026-03-01').str.to_datetime(time_zone='UTC')
 
+# Splits train/test data
 def split(df: pl.LazyFrame, train_end, test_end) -> tuple[pl.LazyFrame, pl.LazyFrame]:
     df_train = df.filter(pl.col('sold_at') < train_end)
     df_test = df.filter((pl.col('sold_at') >= train_end) & (pl.col('sold_at') < test_end))
     return df_train, df_test
 
 def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
-    f = train.select(FEATURES).collect()
-    t = train.select(TARGET).collect()
-    f_array = f.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
-    #get ndarray to work with lightgbm
-    t_array = t.to_numpy()
-    vectorizer, X_train, X_test = fit_title_feature(train, test)
-    X_train_full = hstack([csr_matrix(f_array), X_train]).tocsr()
+    """Fit LightGBM on structured + TF-IDF title features, return test predictions.
+       TF-IDF is fitted on `train` only — the vocabulary is learned, so it must
+       stay inside the fold.
+       """
+    f_train = train.select(FEATURES).collect()
+    t_train = train.select(TARGET).collect()
+
+    # LightGBM can't read Polars categoricals; to_physical() gives the integer
+    # codes. Safe because the cast happens before the split, so train/test
+    # share one mapping.
+    f_train_array = f_train.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
+    t_train_array = t_train.to_numpy()
+
+    X_train, X_test = fit_title_embeddings_features(train, test)
+    X_train_full = hstack([csr_matrix(f_train_array), X_train]).tocsr()
+
     regressor = LGBMRegressor(importance_type='gain')
-    regressor.fit(X_train_full, t_array, categorical_feature=[i for i, c in enumerate(FEATURES) if c in CATEGORICAL])
-    ft = test.select(FEATURES).collect()
-    ft_array = ft.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
-    X_test_full = hstack([csr_matrix(ft_array), X_test]).tocsr()
+    # !!!Breaks if csr_matrix(f_array) not first in hstack!!!
+    regressor.fit(X_train_full, t_train_array, categorical_feature=[i for i, c in enumerate(FEATURES) if c in CATEGORICAL])
+    f_test = test.select(FEATURES).collect()
+    f_test_array = f_test.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
+    X_test_full = hstack([csr_matrix(f_test_array), X_test]).tocsr()
     y_pred = regressor.predict(X_test_full)
     return y_pred
 
@@ -57,13 +69,22 @@ def train_w_folds(df: pl.LazyFrame, start: datetime, end: datetime) -> list:
         start = start + relativedelta(months=1)
     return folds
 
-def fit_title_feature(train: pl.LazyFrame, test: pl.LazyFrame):
+def fit_title_embeddings_features(train: pl.LazyFrame, test: pl.LazyFrame):
     vectorizer = TfidfVectorizer(min_df=5, ngram_range=(1,2), max_features=60000)
+    pca = sklearn.decomposition.IncrementalPCA(n_components=256, batch_size=10000)
     train_titles = train.select(pl.col('title')).collect().get_column("title").to_numpy()
     test_titles = test.select(pl.col('title')).collect().get_column("title").to_numpy()
-    X_train = vectorizer.fit_transform(train_titles)
-    X_test = vectorizer.transform(test_titles)
-    return vectorizer, X_train, X_test
+    train_embedds_array = train.select('fashion_clip_embbeds').collect().get_column('fashion_clip_embbeds').to_numpy()
+    test_embedds_array = test.select('fashion_clip_embbeds').collect().get_column('fashion_clip_embbeds').to_numpy()
+    X_train_title = vectorizer.fit_transform(train_titles)
+    X_test_title = vectorizer.transform(test_titles)
+    X_train_emb = pca.fit_transform(train_embedds_array)
+    print(pca.explained_variance_ratio_.sum())
+    X_test_emb = pca.transform(test_embedds_array)
+    print(X_train_title.shape, X_train_emb.shape, X_test_title.shape, X_test_emb.shape)
+    X_train = hstack([X_train_title, X_train_emb])
+    X_test = hstack([X_test_title, X_test_emb])
+    return X_train, X_test
 
 def report(folds: list, segment: str=None) -> list:
     metrics = []*len(folds)
@@ -89,34 +110,13 @@ def report(folds: list, segment: str=None) -> list:
             mask = fold['title_count']
             metrics.append(evaluate(y_true[np.isnan(mask)], y_pred[np.isnan(mask)]))
             print(len(y_true[np.isnan(mask)]))
+        elif segment == 'within_50_250':
+            mask = fold['price']
+            metrics.append(evaluate(y_true[(mask >= 50) & (mask <= 250)], y_pred[(mask >= 50) & (mask <= 250)]))
+            print(len(y_true[mask]))
     return metrics
 
 def main():
-    df = pl.read_parquet("../data/parquets/sold_listings_20260901.parquet").lazy()
-    df = build_features(df)
-    df = df.with_columns(
-        pl.col('primary_designer').is_in(ARCHIVELIST).alias('archivelist'),
-        pl.col('primary_designer').is_in(ICARELIST).alias('brands_icare')
-    )
-    start = datetime(2026, 2, 1, tzinfo=UTC)
-    start = start - relativedelta(months=12)
-    end = datetime(2026, 3, 1, tzinfo=UTC)
-    option = int(input('Choose an option - 1 fold(1) / 12(2) folds train'))
-    while True:
-        if option == 1:
-            train, test = split(df, TRAIN_END, TEST_END)
-            y_pred = train_lightgbm(train, test)
-            y_true = test.select(TARGET).collect().to_series().to_numpy()
-            res = evaluate(y_pred, y_true)
-            print(res)
-            break
-        elif option == 2:
-            l = train_w_folds(df, start, end)
-            for metric in l:
-                print(metric)
-            break
-        else:
-            print('Invalid option, try again')
-            break
+   print('Hello World')
 if __name__ == "__main__":
     main()

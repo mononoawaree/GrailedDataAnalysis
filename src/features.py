@@ -1,3 +1,4 @@
+import numpy as np
 import polars as pl
 import polars.selectors as cs
 
@@ -34,6 +35,7 @@ YEAR_ONLY = r'\b(?P<yearonly>19[89]\d|20[0-2]\d)\b'
 def build_features(df : pl.LazyFrame) -> pl.LazyFrame:
     df = transform_data(df)
     df = cast_data(df)
+    df = join_clip_embbeds(df, r"D:\Grailed_Npys\embeddings.npy",r"D:\Grailed_Npys\embeddings.npy")
     return df
 
 def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
@@ -96,6 +98,20 @@ def cast_data(df: pl.LazyFrame) -> pl.LazyFrame:
         cs.by_name(CATEGORICAL).cast(pl.Categorical),
         cs.by_name('photo_count', 'measurement_count', 'created_month').cast(pl.Int32),
         pl.col('title').fill_null(''))
+    return df
+
+def join_clip_embbeds(df: pl.LazyDataFrame, embbeds_path: str, stats_path: str) -> pl.LazyFrame:
+    embbeds = np.load(embbeds_path, mmap_mode='r')
+    oks = np.load(stats_path, mmap_mode='r')
+    ids = pl.Series(df.select('id').collect())
+    lookup = pl.LazyFrame({
+        'id': ids,
+        'fashion_clip_embbeds': embbeds,
+    })
+    df = df.join(lookup, on='id', how='left')
+    df.with_columns(
+        pl.col('fashion_clip_embbeds').cast(pl.Float32)
+    )
     return df
 
 def main():

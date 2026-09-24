@@ -4,7 +4,6 @@ from pathlib import Path
 import PIL
 import torch
 from torch.utils.data import Dataset
-from torchvision.io import decode_image
 import clip
 from PIL import Image
 
