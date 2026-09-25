@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from lightgbm import LGBMRegressor
 from scipy.sparse import hstack, csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sympy import vectorize
 
 from src.features import build_features, FEATURES, TARGET, cast_data, CATEGORICAL, ARCHIVELIST, ICARELIST
 from src.evaluate import evaluate
@@ -34,12 +35,14 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
     f_train_array = f_train.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
     t_train_array = t_train.to_numpy()
 
-    X_train, X_test = fit_title_embeddings_features(train, test)
+    vectorizer, X_train, X_test = fit_title_embeddings_features(train, test)
     X_train_full = hstack([csr_matrix(f_train_array), X_train]).tocsr()
-
-    regressor = LGBMRegressor(importance_type='gain')
+    regressor = LGBMRegressor(importance_type='gain', n_estimators=2000, num_leaves=127)
     # !!!Breaks if csr_matrix(f_array) not first in hstack!!!
     regressor.fit(X_train_full, t_train_array, categorical_feature=[i for i, c in enumerate(FEATURES) if c in CATEGORICAL])
+    names = FEATURES + vectorizer.get_feature_names_out().tolist() + [f'emb_{i}' for i in range(256)]
+    imp = sorted(zip(names, regressor.feature_importances_), key=lambda x: -x[1])[:25]
+    print(imp)
     f_test = test.select(FEATURES).collect()
     f_test_array = f_test.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
     X_test_full = hstack([csr_matrix(f_test_array), X_test]).tocsr()
@@ -84,7 +87,7 @@ def fit_title_embeddings_features(train: pl.LazyFrame, test: pl.LazyFrame):
     print(X_train_title.shape, X_train_emb.shape, X_test_title.shape, X_test_emb.shape)
     X_train = hstack([X_train_title, X_train_emb])
     X_test = hstack([X_test_title, X_test_emb])
-    return X_train, X_test
+    return vectorizer, X_train, X_test
 
 def report(folds: list, segment: str=None) -> list:
     metrics = []*len(folds)
@@ -114,6 +117,13 @@ def report(folds: list, segment: str=None) -> list:
             mask = fold['price']
             metrics.append(evaluate(y_true[(mask >= 50) & (mask <= 250)], y_pred[(mask >= 50) & (mask <= 250)]))
             print(len(y_true[mask]))
+        elif segment == 'within_50_250_and_same_titles':
+            mask1 = fold['price']
+            mask2 = fold['title_count']
+            m = (mask1 >= 50) & (mask1 <= 250) & (mask2 > 11) & (mask2 < 100)
+            metrics.append(evaluate(y_true[m], y_pred[m]))
+            #metrics.append(evaluate(y_true[(mask1 >= 50) & (mask1 <= 250) and ((mask2 > 11) & (mask2 < 100))], y_pred[(mask1 >= 50) & (mask1 <= 250)] and ((mask2 > 11) & (mask2 < 100))))
+            print(len(y_true[m]))
     return metrics
 
 def main():
