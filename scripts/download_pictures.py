@@ -20,7 +20,6 @@ urls = pairs["cover_photo_url"].to_list()
 keys = pairs["photo_key"].to_list()
 total = len(urls)
 n_batches = (total + 999) // 1000
-
 existing = {p.stem for p in ROOT.rglob("*.jpg")}
 missing = [u for u, k in zip(urls, keys) if k not in existing]
 retry_urls = [u for u in missing if "media-assets.grailed.com" in u]
