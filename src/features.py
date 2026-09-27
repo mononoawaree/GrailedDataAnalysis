@@ -100,7 +100,7 @@ def cast_data(df: pl.LazyFrame) -> pl.LazyFrame:
         pl.col('title').fill_null(''))
     return df
 
-def join_clip_embbeds(df: pl.LazyDataFrame, embbeds_path: str, stats_path: str) -> pl.LazyFrame:
+def join_clip_embbeds(df: pl.LazyFrame, embbeds_path: str, stats_path: str) -> pl.LazyFrame:
     embbeds = np.load(embbeds_path, mmap_mode='r')
     oks = np.load(stats_path, mmap_mode='r')
     ids = pl.Series(df.select('id').collect())
