@@ -15,11 +15,11 @@
   
     For validation I used 13 monthly walk-forward folds (train on everything before month N - test on N). For leakage check I used scramble test.
 # 4. Results
-  |model                              |  |RMSE    |	|within 20% |
-  | --------------------------------- |  | ------ | | --------- |          
-  | constant (mean price for all data)|  | 1.060  |	| 17.1%     |
-  | designer × category mean          |  | 0.712  |	| 25.2%     | 
-  | 11 structured features            |  | 0.6086 |	| 31.1%     |
-  | season/year derived from titles   |  | 0.6031 |	| 31.4%     |
-  | TF-IDF titles	                  |  | 0.5322 |	| 35.2%     |
-  | FashionCLIP embeddings            |  | 0.5181 |	| 36.0%     |
+  | model | RMSE | within 20% |
+  |---|---|---|
+  | constant | 1.060 | 17.1% |
+  | designer × category mean | 0.712 | 25.2% |
+  | 11 structured features | 0.6086 | 31.1% |
+  | + season/year from titles | 0.6031 | 31.4% |
+  | + TF-IDF titles | 0.5322 | 35.2% |
+  | + FashionCLIP embeddings | 0.5181 | 36.0% |
