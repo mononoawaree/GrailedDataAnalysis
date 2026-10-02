@@ -38,7 +38,7 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
     vectorizer, X_train, X_test = fit_title_embeddings_features(train, test)
     X_train_full = hstack([csr_matrix(f_train_array), X_train]).tocsr()
     regressor = LGBMRegressor(importance_type='gain', n_estimators=2000, num_leaves=127)
-    #!!!Breaks if csr_matrix(f_array) not first in hstack!!! X_train_full, t_train_array, categorical_feature=[i for i, c in enumerate(FEATURES) if c in CATEGORICAL]
+    #!!!Breaks if csr_matrix(f_array) not first in hstack!!!
     regressor.fit(X_train_full, t_train_array, categorical_feature=[i for i, c in enumerate(FEATURES) if c in CATEGORICAL])
     names = FEATURES + vectorizer.get_feature_names_out().tolist() + [f'emb_{i}' for i in range(256)]
     imp = sorted(zip(names, regressor.feature_importances_), key=lambda x: -x[1])[:25]
