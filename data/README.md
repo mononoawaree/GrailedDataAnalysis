@@ -7,9 +7,10 @@
   4.35M sold listings scraped from Grailed covering Aug 2021 – Mar 2026, ~93% Grailed's public sold index as of Sept. 2026. For the scraper I used Java, here is the [repo] (https://github.com/mononoawaree/GrailedScraper.git)
 # 3. Methodology
     The target is log(sold_price). Two reasons. Errors in resale pricing are multiplicative, not additive — being $50 off on a $100 item is a much worse mistake than being $50 off on a $1,000 item, but plain RMSE treats them identically.
-![price_distribution.png](plots/price_distribution.png) ![log_price_distribution.png](plots/log_price_distribution.png)
     In log space both become the same distance. 
     Second, the price distribution is heavy-tailed (median $80, max $35,000), so squared error on raw dollars would be dominated by a few expensive listings.
+
+<img src="data/plots/price_distribution.png" width="49%"> <img src="data/plots/log_price_distribution.png" width="49%">
 
     For the model I picked LightGBM - gradient boosting framework based on decision tree algorithms because features are mostly 
     heterogeneous, high-cardinality categoricals, so there is no need for scaling, and GBDTs remain the strongest baseline on tabular data neural alternatives mostly fail to beat them.
