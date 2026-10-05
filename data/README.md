@@ -10,7 +10,7 @@
     In log space both become the same distance. 
     Second, the price distribution is heavy-tailed (median $80, max $35,000), so squared error on raw dollars would be dominated by a few expensive listings.
 
-<img src="data/plots/price_distribution.png" width="49%"> <img src="data/plots/log_price_distribution.png" width="49%">
+<img src="../data/plots/price_distribution.png" width="49%"> <img src="../data/plots/log_price_distribution.png" width="49%">
 
     For the model I picked LightGBM - gradient boosting framework based on decision tree algorithms because features are mostly 
     heterogeneous, high-cardinality categoricals, so there is no need for scaling, and GBDTs remain the strongest baseline on tabular data neural alternatives mostly fail to beat them.
