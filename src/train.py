@@ -12,11 +12,15 @@ from src.evaluate import evaluate
 TRAIN_END = datetime(2026, 2, 1, tzinfo=UTC) #pl.lit('2026-02-01').str.to_datetime(time_zone='UTC')
 TEST_END = datetime(2026, 3, 1, tzinfo=UTC) #pl.lit('2026-03-01').str.to_datetime(time_zone='UTC')
 
-PRICE_BANDS = {
-    'less_50':        (0, 50),
-    'within_50_250':  (50, 250),
-    'within_250_800': (250, 800),
-    'more_800':       (800, float('inf')),
+SEGMENTS = {
+    'archivelist' : lambda f: f['archive'],
+    'unique_titles' : lambda f: f['title_count'] == 1,
+    'unseen_titles' : lambda f: np.isnan(f['title_count']),
+    'same_titles' : lambda f: (f['title_count'] > 11) & (f['title_count'] < 100),
+    'less_50':        lambda f: (f['price'] > 0) & (f['price'] <= 50),
+    'within_50_250':  lambda f: (f['price'] > 50) & (f['price'] <= 250),
+    'within_250_800': lambda f: (f['price'] > 250) & (f['price'] <= 800),
+    'more_800':       lambda f: (f['price'] > 800)
 }
 
 # Splits train/test data
@@ -41,7 +45,7 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
 
     vectorizer, pca, X_train, X_test = fit_title_embeddings_features(train, test)
     X_train_full = hstack([csr_matrix(f_train_array), X_train]).tocsr()
-    regressor = LGBMRegressor(importance_type='gain', n_estimators=2000, num_leaves=127)
+    regressor = LGBMRegressor(importance_type='gain', n_estimators=2000, num_leaves=127, random_state=100)
     #!!!Breaks if csr_matrix(f_array) not first in hstack!!!
     regressor.fit(X_train_full, t_train_array, categorical_feature=[i for i, c in enumerate(FEATURES) if c in CATEGORICAL])
     names = FEATURES + vectorizer.get_feature_names_out().tolist() + [f'emb_{i}' for i in range(pca.n_components_)]
@@ -92,12 +96,21 @@ def fit_title_embeddings_features(train: pl.LazyFrame, test: pl.LazyFrame):
     X_test = hstack([X_test_title, X_test_emb])
     return vectorizer, pca, X_train, X_test
 
-def report(folds: list, segment: list=None) -> list:
+def report(folds: list, segments: list) -> list:
     metrics = []
     for fold in folds:
-        y_true = fold['y_true']
         y_pred = fold['y_pred']
-
+        y_true = fold['y_true']
+        mask = np.ones(len(y_true), dtype=bool)
+        for seg in segments:
+            mask &= SEGMENTS[seg](fold)
+        n = int(mask.sum())
+        if n == 0:
+            metrics.append({'n': 0})
+            continue
+        m = evaluate(y_true[mask], y_pred[mask])
+        m['n'] = n
+        metrics.append(m)
     return metrics
 
 def main():
