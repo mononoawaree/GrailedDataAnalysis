@@ -1,5 +1,4 @@
 from datetime import datetime, UTC
-
 import numpy as np
 import polars as pl
 import sklearn
@@ -7,13 +6,18 @@ from dateutil.relativedelta import relativedelta
 from lightgbm import LGBMRegressor
 from scipy.sparse import hstack, csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sympy import vectorize
-
 from src.features import build_features, FEATURES, TARGET, cast_data, CATEGORICAL, ARCHIVELIST, ICARELIST
 from src.evaluate import evaluate
 
 TRAIN_END = datetime(2026, 2, 1, tzinfo=UTC) #pl.lit('2026-02-01').str.to_datetime(time_zone='UTC')
 TEST_END = datetime(2026, 3, 1, tzinfo=UTC) #pl.lit('2026-03-01').str.to_datetime(time_zone='UTC')
+
+PRICE_BANDS = {
+    'less_50':        (0, 50),
+    'within_50_250':  (50, 250),
+    'within_250_800': (250, 800),
+    'more_800':       (800, float('inf')),
+}
 
 # Splits train/test data
 def split(df: pl.LazyFrame, train_end, test_end) -> tuple[pl.LazyFrame, pl.LazyFrame]:
@@ -33,14 +37,14 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
     # codes. Safe because the cast happens before the split, so train/test
     # share one mapping.
     f_train_array = f_train.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
-    t_train_array = t_train.to_numpy()
+    t_train_array = t_train.to_series().to_numpy()
 
-    vectorizer, X_train, X_test = fit_title_embeddings_features(train, test)
+    vectorizer, pca, X_train, X_test = fit_title_embeddings_features(train, test)
     X_train_full = hstack([csr_matrix(f_train_array), X_train]).tocsr()
     regressor = LGBMRegressor(importance_type='gain', n_estimators=2000, num_leaves=127)
     #!!!Breaks if csr_matrix(f_array) not first in hstack!!!
     regressor.fit(X_train_full, t_train_array, categorical_feature=[i for i, c in enumerate(FEATURES) if c in CATEGORICAL])
-    names = FEATURES + vectorizer.get_feature_names_out().tolist() + [f'emb_{i}' for i in range(256)]
+    names = FEATURES + vectorizer.get_feature_names_out().tolist() + [f'emb_{i}' for i in range(pca.n_components_)]
     imp = sorted(zip(names, regressor.feature_importances_), key=lambda x: -x[1])[:25]
     print(imp)
     f_test = test.select(FEATURES).collect()
@@ -56,16 +60,15 @@ def train_w_folds(df: pl.LazyFrame, start: datetime, end: datetime) -> list:
         test_end = start + relativedelta(months=1)
         traindf, testdf = split(df, train_end, test_end)
         y_pred = train_lightgbm(traindf, testdf)
-        lookup = traindf.select(pl.col('title')).group_by(pl.col('title')).agg(pl.col('title').count().alias('count_title'))
-        joined = testdf.join(lookup, on=["title"], how="left")
-        title_count = joined.select(pl.col('count_title')).collect().to_series().to_numpy()
-        cols = testdf.select(TARGET,'sold_price', 'is_archive').collect()
+        lookup = traindf.select(pl.col('title')).group_by(pl.col('title')).agg(pl.len().alias('count_title'))
+        joined = testdf.join(lookup, on=["title"], how="left", maintain_order="left")
+        cols = joined.select(TARGET,'sold_price', 'is_archive', 'count_title').collect()
         fold = {
             'y_true': cols[TARGET].to_numpy(),
             'y_pred': y_pred,
             'archive': cols['is_archive'].to_numpy(),
             'price': cols['sold_price'].to_numpy(),
-            'title_count': title_count,
+            'title_count': cols['count_title'].to_numpy(),
             'start': train_end,
         }
         folds.append(fold)
@@ -73,7 +76,7 @@ def train_w_folds(df: pl.LazyFrame, start: datetime, end: datetime) -> list:
     return folds
 
 def fit_title_embeddings_features(train: pl.LazyFrame, test: pl.LazyFrame):
-    vectorizer = TfidfVectorizer(min_df=5, ngram_range=(1,2), max_features=60000)
+    vectorizer = TfidfVectorizer(min_df=5, max_features=15000)
     pca = sklearn.decomposition.IncrementalPCA(n_components=256, batch_size=10000)
     train_titles = train.select(pl.col('title')).collect().get_column("title").to_numpy()
     test_titles = test.select(pl.col('title')).collect().get_column("title").to_numpy()
@@ -87,43 +90,14 @@ def fit_title_embeddings_features(train: pl.LazyFrame, test: pl.LazyFrame):
     print(X_train_title.shape, X_train_emb.shape, X_test_title.shape, X_test_emb.shape)
     X_train = hstack([X_train_title, X_train_emb])
     X_test = hstack([X_test_title, X_test_emb])
-    return vectorizer, X_train_title, X_test_title
+    return vectorizer, pca, X_train, X_test
 
-def report(folds: list, segment: str=None) -> list:
-    metrics = []*len(folds)
+def report(folds: list, segment: list=None) -> list:
+    metrics = []
     for fold in folds:
         y_true = fold['y_true']
         y_pred = fold['y_pred']
-        if segment is None:
-            metrics.append(evaluate(y_true, y_pred))
-            print(len(y_true))
-        elif segment == 'archivelist':
-            mask = fold['archive']
-            metrics.append(evaluate(y_true[mask], y_pred[mask]))
-            print(len(y_true[mask]))
-        elif segment == 'same_titles':
-            mask = fold['title_count']
-            metrics.append(evaluate(y_true[(mask > 11) & (mask < 100)], y_pred[(mask > 11) & (mask < 100)]))
-            print(len(y_true[(mask > 11) & (mask < 100)]))
-        elif segment == 'unique_titles':
-            mask = fold['title_count']
-            metrics.append(evaluate(y_true[mask == 1], y_pred[mask == 1]))
-            print(len(y_true[mask == 1]))
-        elif segment == 'unseen_titles':
-            mask = fold['title_count']
-            metrics.append(evaluate(y_true[np.isnan(mask)], y_pred[np.isnan(mask)]))
-            print(len(y_true[np.isnan(mask)]))
-        elif segment == 'within_50_250':
-            mask = fold['price']
-            metrics.append(evaluate(y_true[(mask >= 50) & (mask <= 250)], y_pred[(mask >= 50) & (mask <= 250)]))
-            print(len(y_true[mask]))
-        elif segment == 'within_50_250_and_same_titles':
-            mask1 = fold['price']
-            mask2 = fold['title_count']
-            m = (mask1 >= 50) & (mask1 <= 250) & (mask2 > 11) & (mask2 < 100)
-            metrics.append(evaluate(y_true[m], y_pred[m]))
-            #metrics.append(evaluate(y_true[(mask1 >= 50) & (mask1 <= 250) and ((mask2 > 11) & (mask2 < 100))], y_pred[(mask1 >= 50) & (mask1 <= 250)] and ((mask2 > 11) & (mask2 < 100))))
-            print(len(y_true[m]))
+
     return metrics
 
 def main():

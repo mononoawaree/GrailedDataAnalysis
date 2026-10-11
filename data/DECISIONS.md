@@ -791,3 +791,9 @@ FashionCLIP embeddings give a consistent ~2.6% RMSE reduction across every segme
 std deviation with similarity > 0.92 - 0.332413
 std deviation with similarity > 0.85 - 0.403103
 std deviation with similarity > 0.97 - 0.201293 
+
+Settled: bigrams do nothing.
+
+	RMSE	within 20%
+with bigrams	0.51105	36.554%
+without	0.50987	36.473%
