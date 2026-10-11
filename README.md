@@ -14,7 +14,7 @@
   For the model I picked LightGBM - gradient boosting framework based on decision tree algorithms because features are mostly 
   heterogeneous, high-cardinality categoricals, so there is no need for scaling, and GBDTs remain the strongest baseline on tabular data neural alternatives mostly fail to beat them.
   LightGBM was tuned with these hyperparameters - 2000 estimators and 127 leaves, since vanilla ones were underfitting model substantially.
-  For validation, I used 13 monthly walk-forward folds (train on everything before month N - test on N). For leakage test check I used y-scramble test.
+  For validation, I used 13 monthly walk-forward folds (train on everything before month N - test on N). For leakage test check I used y-scramble and test performance collapsed to the constant baseline (mean log(sold_price)).
 
 ### 4. Results
 
@@ -37,13 +37,15 @@ Final model, per-fold range: 0.505–0.564. Repeated identical runs differ by
 
 13 monthly walk-forward folds. Mean across folds, per-fold range in parentheses.
 
-| Price band | RMSE (log) | MAE | Within 20% | n / fold |
+| Price band | RMSE | MAE | Within 20% | n / fold |
 |---|---|---|---|---|
 | < $50     | 0.621 (0.596–0.728) | 0.459 | 29.4% | 14,333–25,825 |
 | $50–250   | 0.430 (0.423–0.439) | 0.331 | 39.7% | 32,346–42,661 |
 | $250–800  | 0.537 (0.516–0.550) | 0.395 | 37.1% | 9,054–12,129 |
 | > $800    | 0.853 (0.825–0.918) | 0.651 | 21.3% | 1,190–1,737 |
 | **All**   | **0.520** (0.505–0.564) | 0.385 | 36.0% | 57,936–80,637 |
+
+<img src="data/plots/true_vs_pred.png">
 
 Error roughly doubles from the $50–250 band to $800+, and within-20% halves. Accuracy degrades at both ends of the price range, worst above $800 — where the model has the least data (~1,500 listings per fold) and prices depend most on factors the features don’t capture.
 
@@ -52,7 +54,7 @@ Error roughly doubles from the $50–250 band to $800+, and within-20% halves. A
 Title frequency = times the listing's exact title appeared in the training window.
 Restricted to one price band so the effect isn't confounded with price.
 
-| Title seen in train | RMSE (log) | MAE | Within 20% | n / fold |
+| Title seen in train | RMSE | MAE | Within 20% | n / fold |
 |---|---|---|---|---|
 | Never       | 0.447 (0.438–0.457) | 0.345 | 38.1% | 24,097–32,372 |
 | Once        | 0.400 (0.390–0.408) | 0.310 | 41.8% | 3,041–4,051 |
@@ -62,3 +64,16 @@ Band average: 0.430. Ranges do not overlap between adjacent rows in any of the 1
 Title exposure drives error monotonically (0.447 → 0.400 → 0.352), but 74% of test listings have unseen titles and they’re only slightly worse — so the title features work through shared vocabulary, not memorization.
 
 # 6. Noise floor
+
+How much of the remaining error is reducible? Listings were grouped with their
+nearest neighbours using FAISS (`IndexFlatIP` over L2-normalized FashionCLIP
+embeddings) at cosine similarity ≥ 0.92, restricted to matching brand. The
+standard deviation of log price within these near-duplicate groups is **0.332**.
+
+Two listings that are visually near-identical and from the same brand are, to
+any model built on images, titles and listing attributes, the same item — so
+this variation is not predictable from the available features.
+0.520² = 0.270 total
+0.332² = 0.110 irreducible
+**diff = √0.160 = 0.400**
+Against that floor, roughly 41% of the model’s squared error is irreducible given these features; the remainder is potentially reducible.
