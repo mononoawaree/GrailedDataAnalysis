@@ -9,7 +9,7 @@
   In log space both become the same distance. 
   Second, the price distribution is heavy-tailed (median $80, max $35,000), so squared error on raw dollars would be dominated by a few expensive listings.
 
-<img src="data/plots/price_distribution.png" width="49%"> <img src="data/plots/log_price_distribution.png" width="49%">
+<img src="data/plots/price_distribution.png" width="49%" height="800"> <img src="data/plots/log_price_distribution.png" width="49%" height="800">
 
   For the model I picked LightGBM - gradient boosting framework based on decision tree algorithms because features are mostly 
   heterogeneous, high-cardinality categoricals, so there is no need for scaling, and GBDTs remain the strongest baseline on tabular data neural alternatives mostly fail to beat them.
@@ -45,7 +45,7 @@ Final model, per-fold range: 0.505–0.564. Repeated identical runs differ by
 | > $800    | 0.853 (0.825–0.918) | 0.651 | 21.3% | 1,190–1,737 |
 | **All**   | **0.520** (0.505–0.564) | 0.385 | 36.0% | 57,936–80,637 |
 
-<img src="data/plots/true_vs_pred.png">
+<img src="data/plots/true_vs_pred.png" width="60%" height="800">
 
 Error roughly doubles from the $50–250 band to $800+, and within-20% halves. Accuracy degrades at both ends of the price range, worst above $800 — where the model has the least data (~1,500 listings per fold) and prices depend most on factors the features don’t capture.
 
