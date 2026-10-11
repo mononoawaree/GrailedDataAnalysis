@@ -16,14 +16,49 @@
   LightGBM was tuned with these hyperparameters - 2000 estimators and 127 leaves, since vanilla ones were underfitting model substantially.
   For validation, I used 13 monthly walk-forward folds (train on everything before month N - test on N). For leakage test check I used y-scramble test.
 
-# 4. Results
-  | model | RMSE | within 20% (20% abs. error)   |
-  |---|---|-------------------------------|
-  | constant | 1.060 | 17.1%                         |
-  | designer × category mean | 0.712 | 25.2%                         |
-  | 11 structured features | 0.6086 | 31.1%                         |
-  | + season/year from titles | 0.6031 | 31.4%                         |
-  | + TF-IDF titles | 0.5322 | 35.2%                         |
-  | + FashionCLIP embeddings | 0.5181 | 36.0%                         |
+### 4. Results
+
+13 monthly walk-forward folds. RMSE on log price; mean across folds.
+
+| Model | RMSE | Within 20% |
+|---|---|---|
+| Constant | 1.060 | 17.1% |
+| Designer × category mean | 0.712 | 25.2% |
+| 11 structured features | 0.609 | 31.1% |
+| + season/year parsed from titles | 0.603 | 31.4% |
+| + TF-IDF titles | 0.532 | 35.2% |
+| + FashionCLIP embeddings (PCA, 256 comps) | **0.520** | 36.0% |
+
+Final model, per-fold range: 0.505–0.564. Repeated identical runs differ by
+~0.0004 at n≈74k, so differences below ~0.001 are not meaningful.
 
 # 5. Where it fails?
+### Error by price band
+
+13 monthly walk-forward folds. Mean across folds, per-fold range in parentheses.
+
+| Price band | RMSE (log) | MAE | Within 20% | n / fold |
+|---|---|---|---|---|
+| < $50     | 0.621 (0.596–0.728) | 0.459 | 29.4% | 14,333–25,825 |
+| $50–250   | 0.430 (0.423–0.439) | 0.331 | 39.7% | 32,346–42,661 |
+| $250–800  | 0.537 (0.516–0.550) | 0.395 | 37.1% | 9,054–12,129 |
+| > $800    | 0.853 (0.825–0.918) | 0.651 | 21.3% | 1,190–1,737 |
+| **All**   | **0.520** (0.505–0.564) | 0.385 | 36.0% | 57,936–80,637 |
+
+Error roughly doubles from the $50–250 band to $800+, and within-20% halves. Accuracy degrades at both ends of the price range, worst above $800 — where the model has the least data (~1,500 listings per fold) and prices depend most on factors the features don’t capture.
+
+### Error by title frequency ($50–250 band only)
+
+Title frequency = times the listing's exact title appeared in the training window.
+Restricted to one price band so the effect isn't confounded with price.
+
+| Title seen in train | RMSE (log) | MAE | Within 20% | n / fold |
+|---|---|---|---|---|
+| Never       | 0.447 (0.438–0.457) | 0.345 | 38.1% | 24,097–32,372 |
+| Once        | 0.400 (0.390–0.408) | 0.310 | 41.8% | 3,041–4,051 |
+| 12–99 times | 0.352 (0.332–0.361) | 0.269 | 47.5% | 1,552–2,072 |
+
+Band average: 0.430. Ranges do not overlap between adjacent rows in any of the 13 folds.
+Title exposure drives error monotonically (0.447 → 0.400 → 0.352), but 74% of test listings have unseen titles and they’re only slightly worse — so the title features work through shared vocabulary, not memorization.
+
+# 6. Noise floor

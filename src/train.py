@@ -73,8 +73,9 @@ def train_w_folds(df: pl.LazyFrame, start: datetime, end: datetime) -> list:
             'archive': cols['is_archive'].to_numpy(),
             'price': cols['sold_price'].to_numpy(),
             'title_count': cols['count_title'].to_numpy(),
-            'start': train_end,
+            'start': train_end.isoformat(),
         }
+        np.savez(f'../data/folds/embs_tfidf/{train_end.strftime('%Y-%m')}.npz', **fold)
         folds.append(fold)
         start = start + relativedelta(months=1)
     return folds
