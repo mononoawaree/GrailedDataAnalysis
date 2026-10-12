@@ -1,21 +1,22 @@
 # GrailedDataAnalysis
 # Price prediction for fashion resale on 4.3M scraped Grailed sold listings.
 # 1. Rationale
-  I buy and resell clothes regularly and wanted a better sense of what an item is actually worth before I price it.
+I buy and resell clothes regularly and wanted a better sense of what an item is actually worth before I price it.
 # 2. Data
-  4.35M sold listings scraped from Grailed covering Aug 2021 – Mar 2026, ~93% of Grailed's public sold index as of Sept. 2026. For the scraper I used Java, here is the [repo](https://github.com/mononoawaree/GrailedScraper.git)
+4.35M sold listings scraped from Grailed covering Aug 2021 – Mar 2026, ~93% of Grailed's public sold index as of Sept. 2026. For the scraper I used Java, here is the [repo](https://github.com/mononoawaree/GrailedScraper.git)
 # 3. Methodology
-  The target is log(sold_price). Two reasons. Errors in resale pricing are multiplicative, not additive — being $50 off on a $100 item is a much worse mistake than being $50 off on a $1,000 item, but plain RMSE treats them identically.
-  In log space both become the same distance. 
-  Second, the price distribution is heavy-tailed (median $80, max $35,000), so squared error on raw dollars would be dominated by a few expensive listings.
+The target is log(sold_price). Two reasons. Errors in resale pricing are multiplicative, not additive — being $50 off on a $100 item is a much worse mistake than being $50 off on a $1,000 item, but plain RMSE treats them identically.
+In log space both become the same distance. 
+Second, the price distribution is heavy-tailed (median $80, max $35,000), so squared error on raw dollars would be dominated by a few expensive listings.
 
 <img src="data/plots/price_distribution.png" width="49%"> <img src="data/plots/log_price_distribution.png" width="49%">
 
-  For the model I picked LightGBM - gradient boosting framework based on decision tree algorithms because features are mostly 
-  heterogeneous, high-cardinality categoricals, so there is no need for scaling, and GBDTs remain the strongest baseline on tabular data neural alternatives mostly fail to beat them.
-  LightGBM was tuned with these hyperparameters - 2000 estimators and 127 leaves, since vanilla ones were underfitting model substantially.
-  For validation, I used 13 monthly walk-forward folds (train on everything before month N - test on N). 
-  For leakage test check I used y-scramble and test performance collapsed to the constant baseline - RMSE(scramble) = 1.059 ~ RMSE(baseline) = 1.060
+For the model I picked LightGBM - gradient boosting framework based on decision tree algorithms because features are mostly 
+heterogeneous, high-cardinality categoricals, so there is no need for scaling, and GBDTs remain the strongest baseline on tabular data neural alternatives mostly fail to beat them.
+LightGBM was tuned with these hyperparameters - 2000 estimators and 127 leaves, since vanilla ones were underfitting model substantially.
+For validation, I used 13 monthly walk-forward folds (train on everything before month N - test on N). 
+For leakage test check I used y-scramble and test performance collapsed to the constant baseline - RMSE(scramble) = 1.059 ~ RMSE(baseline) = 1.060
+FEATURES = 'department', 'category', 'path', 'color', 'condition', 'size', 'location', 'photo_count', 'measurement_count', 'primary_designer', 'created_month'
 
 # 4. Results
 
@@ -32,6 +33,38 @@
 
 Final model, per-fold range: 0.505–0.564. Repeated identical runs differ by
 ~0.0004 at n≈74k, so differences below ~0.001 are not meaningful.
+
+# Feature importance
+
+Top 15 by LightGBM gain, final fold.
+
+| Rank | Feature | Type |
+|---|---|---|
+| 1 | `primary_designer` | structured |
+| 2 | `path` | structured |
+| 3 | `vintage` | TF-IDF |
+| 4 | `category` | structured |
+| 5 | `condition` | structured |
+| 6 | `location` | structured |
+| 7 | `emb_3` | image |
+| 8 | `supreme` | TF-IDF |
+| 9 | `emb_5` | image |
+| 10 | `y2k` | TF-IDF |
+| 11 | `color` | structured |
+| 12 | `year` | structured |
+| 13 | `size` | structured |
+| 14 | `photo_count` | structured |
+| 15 | `emb_4` | image |
+
+Structured attributes dominate, with designer and category path accounting for
+most of the measured gain. Title tokens appear next — `vintage`, `supreme`,
+`y2k` are era and hype markers. Image components contribute diffusely: ten of
+the 256 appear in the top 25, none individually large. This is consistent with
+the ablation above, where TF-IDF titles bought 0.071 and the embeddings 0.012.
+
+Two caveats: gain importance favours high-cardinality categoricals, so
+`primary_designer` (thousands of levels) is advantaged over binary features by
+construction; and this is a single fold rather than an average across the 13.
 
 # 5. Where it fails
 # Error by price band
