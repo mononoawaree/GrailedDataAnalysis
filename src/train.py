@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 from lightgbm import LGBMRegressor
 from scipy.sparse import hstack, csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
-from src.features import build_features, FEATURES, TARGET, cast_data, CATEGORICAL, ARCHIVELIST, ICARELIST
+from src.features import FEATURES, TARGET, CATEGORICAL
 from src.evaluate import evaluate
 
 TRAIN_END = datetime(2026, 2, 1, tzinfo=UTC) #pl.lit('2026-02-01').str.to_datetime(time_zone='UTC')
@@ -16,7 +16,7 @@ SEGMENTS = {
     'archivelist' : lambda f: f['archive'],
     'unique_titles' : lambda f: f['title_count'] == 1,
     'unseen_titles' : lambda f: np.isnan(f['title_count']),
-    'same_titles' : lambda f: (f['title_count'] > 11) & (f['title_count'] < 100),
+    'same_titles' : lambda f: (f['title_count'] > 9) & (f['title_count'] < 101),
     'less_50':        lambda f: (f['price'] > 0) & (f['price'] <= 50),
     'within_50_250':  lambda f: (f['price'] > 50) & (f['price'] <= 250),
     'within_250_800': lambda f: (f['price'] > 250) & (f['price'] <= 800),
