@@ -3,3 +3,4 @@ sklearn-env
 data/parquets/*.parquet
 data/*.npy
 data/folds/*.npz
+data/DECISIONS.md
