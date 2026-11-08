@@ -5,15 +5,20 @@
 # Concatenate all four blocks in the saved column order ← and this one
 # booster.predict() → log price
 # np.exp() → dollars
+import math
+
+import numpy as np
 import polars as pl
 import sklearn
+import lightgbm as lgb
+from scipy.sparse import hstack, csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 from datetime import datetime, timezone, timedelta
 
 from scripts.embedd_one import embedd_one
-from src.features import build_features, build_features_for_one
+from src.features import build_features, build_features_for_one, FEATURES
 
-schema = pl.read_parquet_schema("../data/parquets/sold_listings_20260824.parquet")
+schema = pl.read_parquet_schema("../data/parquets/sold_listings_20260901.parquet")
 
 PDT = timezone(timedelta(hours=-7))
 
@@ -65,10 +70,23 @@ test_row = {
     "photo_key": " " * 16,
 }
 
-def predict_one(features: dict, model_txt: str | None, pca: sklearn.decomposition.IncrementalPCA | None, vectorizer: TfidfVectorizer | None) -> int:
+def predict_one(features: dict, model_txt: str, pca: sklearn.decomposition.IncrementalPCA, vectorizer: TfidfVectorizer) -> float:
     features_dict = {k: v for k, v in features.items() if k in schema}
-    lf = pl.LazyFrame(features_dict)
-    embedd_one(lf)
-    return 0
-
-predict_one(test_row, None, None, None)
+    lf = pl.LazyFrame([features_dict])
+    url = lf.select(pl.col("cover_photo_url")).collect().item()
+    emb = embedd_one(url)
+    lf = lf.with_columns(
+        pl.Series("fashion_clip_embeds", [emb], dtype=pl.Array(pl.Float32, 512)) # array[f32, 512]
+    )
+    lf = build_features_for_one(lf)
+    emb_array = lf.select(pl.col("fashion_clip_embeds")).collect().get_column("title").to_numpy()
+    title_array = lf.select(pl.col("title")).collect().get_column("title").to_numpy()
+    X_emb = pca.transform(emb_array)
+    X_title = vectorizer.transform([title_array])
+    X_one = hstack([X_title, X_emb])
+    f_train = lf.select(FEATURES).collect()
+    f_train_array = f_train.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
+    X_one_full = hstack([csr_matrix(f_train_array), X_one]).tocsr()
+    booster = lgb.Booster(model_file=model_txt)
+    pred = booster.predict(X_one_full)
+    return float(np.exp(pred[0]))
