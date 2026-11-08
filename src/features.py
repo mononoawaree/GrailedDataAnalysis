@@ -35,7 +35,12 @@ YEAR_ONLY = r'\b(?P<yearonly>19[89]\d|20[0-2]\d)\b'
 def build_features(df : pl.LazyFrame) -> pl.LazyFrame:
     df = transform_data(df)
     df = cast_data(df)
-    df = join_clip_embbeds(df, r"D:\Grailed_Npys\embeddings.npy",r"D:\Grailed_Npys\embeddings.npy")
+    df = join_clip_embbeds(df, r"D:\GrailedML\Grailed_Npys\embeddings.npy",r"D:\GrailedML\Grailed_Npys\embeddings.npy")
+    return df
+
+def build_features_for_one(df : pl.LazyFrame) -> pl.LazyFrame:
+    df = transform_data(df)
+    df = cast_data(df)
     return df
 
 def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
@@ -102,16 +107,14 @@ def cast_data(df: pl.LazyFrame) -> pl.LazyFrame:
 
 def join_clip_embbeds(df: pl.LazyFrame, embbeds_path: str, stats_path: str) -> pl.LazyFrame:
     embbeds = np.load(embbeds_path, mmap_mode='r')
-    oks = np.load(stats_path, mmap_mode='r')
-    ids = pl.Series(df.select('id').collect())
+    ok = np.load(stats_path, mmap_mode='r')
+    ids = df.select('id').collect().to_series()
+    assert len(ids) == len(embbeds) == len(ok)
     lookup = pl.LazyFrame({
         'id': ids,
         'fashion_clip_embbeds': embbeds,
     })
     df = df.join(lookup, on='id', how='left')
-    df.with_columns(
-        pl.col('fashion_clip_embbeds').cast(pl.Float32)
-    )
     return df
 
 def main():
