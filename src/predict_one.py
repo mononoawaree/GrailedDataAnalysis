@@ -21,11 +21,11 @@ from src.features import build_features, build_features_for_one, FEATURES
 schema = pl.read_parquet_schema("../data/parquets/sold_listings_20260901.parquet")
 
 PDT = timezone(timedelta(hours=-7))
+booster = lgb.Booster(model_file='file')
 
 test_row = {
     "title": "YY 5019 Round Frame Black Sunglasses",
     "department": "menswear",
-    "source": "Grailed",
     "category": "accessories",
     "category_path": "accessories.sunglasses",
     "category_size": "accessories.one_size",
@@ -42,7 +42,6 @@ test_row = {
     "dropped": False,
     "created_at": datetime(2026, 3, 18, 14, 49, 55, 38000, tzinfo=PDT),
     "price_updated_at": datetime(2026, 3, 18, 14, 49, 55, 38000, tzinfo=PDT),
-    "sold_at": datetime(2026, 3, 22, 5, 2, 41, 623000, tzinfo=PDT),
     "cover_photo_url": "https://media-assets.grailed.com/prd/listing/temp/bba2acf1890c47fdabb2ea8edc2a236c",
     "location": "United Kingdom",
     "seller_id": 18167,
@@ -55,22 +54,10 @@ test_row = {
     "photo_count": 17,
     "measurement_count": 0,
     "external_id": 94069523,
-    "currency": "USD",
-    "local_image_path": None,
-    "image_download_status": None,
-    "image_download_attempted_at": None,
-    "original_price": None,
-    "discount_pct": None,
-    "raw_payload": None,
-    "scraped_at": datetime(2026, 4, 29, 21, 45, 51, 473389, tzinfo=PDT),
-    "price_history": None,
-    "designer_ids": [7183],
     "designer_names": ["Yohji Yamamoto"],
-    "id": 3583191,
-    "photo_key": " " * 16,
 }
 
-def predict_one(features: dict, model_txt: str, pca: sklearn.decomposition.IncrementalPCA, vectorizer: TfidfVectorizer) -> float:
+def predict_one(features: dict, pca: sklearn.decomposition.IncrementalPCA, vectorizer: TfidfVectorizer) -> float:
     features_dict = {k: v for k, v in features.items() if k in schema}
     lf = pl.LazyFrame([features_dict])
     url = lf.select(pl.col("cover_photo_url")).collect().item()
@@ -79,14 +66,13 @@ def predict_one(features: dict, model_txt: str, pca: sklearn.decomposition.Incre
         pl.Series("fashion_clip_embeds", [emb], dtype=pl.Array(pl.Float32, 512)) # array[f32, 512]
     )
     lf = build_features_for_one(lf)
-    emb_array = lf.select(pl.col("fashion_clip_embeds")).collect().get_column("title").to_numpy()
+    emb_array = lf.select(pl.col("fashion_clip_embeds")).collect().get_column("fashion_clip_embeds").to_numpy()
     title_array = lf.select(pl.col("title")).collect().get_column("title").to_numpy()
     X_emb = pca.transform(emb_array)
-    X_title = vectorizer.transform([title_array])
+    X_title = vectorizer.transform(title_array)
     X_one = hstack([X_title, X_emb])
     f_train = lf.select(FEATURES).collect()
     f_train_array = f_train.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
     X_one_full = hstack([csr_matrix(f_train_array), X_one]).tocsr()
-    booster = lgb.Booster(model_file=model_txt)
     pred = booster.predict(X_one_full)
     return float(np.exp(pred[0]))

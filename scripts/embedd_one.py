@@ -1,6 +1,6 @@
 import io
-import urllib
 
+import numpy as np
 import open_clip
 import requests
 import torch
@@ -13,7 +13,7 @@ model.eval().to(device)
 
 #turn off the gradients
 @torch.inference_mode()
-def embedd_one(url: str) -> float:
+def embedd_one(url: str) -> np.ndarray:
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
@@ -23,5 +23,4 @@ def embedd_one(url: str) -> float:
     tensor_input = preprocess(image).unsqueeze(0).to(device)
     #.unsqueeze(0) because 0th element has to be a batch size
     tensor = model.encode_image(tensor_input, normalize=True)[0].cpu().numpy()
-    print(tensor.shape)
     return tensor

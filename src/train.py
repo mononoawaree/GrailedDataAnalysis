@@ -1,4 +1,6 @@
+import json
 from datetime import datetime, UTC
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -6,9 +8,8 @@ import polars as pl
 import sklearn
 from dateutil.relativedelta import relativedelta
 from lightgbm import LGBMRegressor
-from scipy.sparse import hstack, csr_matrix
+from scipy.sparse import hstack, csr_matrix, save_npz
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.pipeline import Pipeline
 
 from src.features import FEATURES, TARGET, CATEGORICAL
 from src.evaluate import evaluate
@@ -33,7 +34,7 @@ def split(df: pl.LazyFrame, train_end, test_end) -> tuple[pl.LazyFrame, pl.LazyF
     df_test = df.filter((pl.col('sold_at') >= train_end) & (pl.col('sold_at') < test_end))
     return df_train, df_test
 
-def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
+def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> np.ndarray:
     """Fit LightGBM on structured + TF-IDF title features, return test predictions.
        TF-IDF is fitted on `train` only — the vocabulary is learned, so it must
        stay inside the fold.
@@ -44,6 +45,7 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
     # LightGBM can't read Polars categoricals; to_physical() gives the integer
     # codes. Safe because the cast happens before the split, so train/test
     # share one mapping.
+    mapping = build_cat_mapping(f_train)
     f_train_array = f_train.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
     t_train_array = t_train.to_series().to_numpy()
 
@@ -54,7 +56,7 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> list:
     #!!!Breaks if csr_matrix(f_array) not first in hstack!!!
     regressor.fit(X_train_full, t_train_array, categorical_feature=[i for i, c in enumerate(FEATURES) if c in CATEGORICAL])
 
-    save_artifacts('"D:\GrailedML\Model"',regressor, vectorizer, pca)
+    save_artifacts("D:\GrailedML\Model",regressor, vectorizer, pca, mapping)
 
     names = FEATURES + vectorizer.get_feature_names_out().tolist() + [f'emb_{i}' for i in range(pca.n_components_)]
     imp = sorted(zip(names, regressor.feature_importances_), key=lambda x: -x[1])[:25]
@@ -110,11 +112,25 @@ def fit_title_embeddings_features(train: pl.LazyFrame, test: pl.LazyFrame) -> tu
     X_test = hstack([X_test_title, X_test_emb])
     return vectorizer, pca, X_train, X_test
 
-def save_artifacts(fileName: str, regressor: LGBMRegressor, vectorizer: TfidfVectorizer, pca: sklearn.decomposition.IncrementalPCA) -> None:
-    joblib.dump(vectorizer, f'{fileName}/vectorizer.joblib')
-    joblib.dump(pca, f'{fileName}/pca.joblib')
-    regressor.booster_.save_model(f'{fileName}/model.txt')
+def save_artifacts(fileName: str, regressor: LGBMRegressor, vectorizer: TfidfVectorizer, pca: sklearn.decomposition.IncrementalPCA, mapping: dict[str, dict[str, int]]) -> None:
+    out = Path(fileName)
+    out.mkdir(parents=True, exist_ok=True)
+    joblib.dump(vectorizer, out / "vectorizer.joblib")
+    joblib.dump(pca, out / "pca.joblib")
+    regressor.booster_.save_model(out / "model.txt")
+    with open(out / "cat_mapping.json", "w") as f:
+        json.dump(mapping, f)
 
+def build_cat_mapping(df: pl.DataFrame) -> dict[str, dict[str, int]]:
+    cat_cols = [c for c, t in df.schema.items() if t == pl.Categorical]
+    mapping = {}
+    for c in cat_cols:
+        pairs = (df
+                .select(pl.col(c).cast(pl.String).alias('s'), pl.col(c).to_physical().alias('code'))
+                .drop_nulls()
+                .unique())
+        mapping[c] = dict(zip(pairs["s"].to_list(), pairs["code"].to_list()))
+    return mapping
 
 def report(folds: list, segments: list) -> list:
     metrics = []
