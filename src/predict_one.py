@@ -57,7 +57,7 @@ test_row = {
     "designer_names": ["Yohji Yamamoto"],
 }
 
-def predict_one(features: dict, pca: sklearn.decomposition.IncrementalPCA, vectorizer: TfidfVectorizer) -> float:
+def predict_one(features: dict, pca: sklearn.decomposition.IncrementalPCA, vectorizer: TfidfVectorizer, booster: lgb.Booster, mapping: dict[str, dict[str, int]]) -> float:
     features_dict = {k: v for k, v in features.items() if k in schema}
     lf = pl.LazyFrame([features_dict])
     url = lf.select(pl.col("cover_photo_url")).collect().item()
@@ -72,7 +72,11 @@ def predict_one(features: dict, pca: sklearn.decomposition.IncrementalPCA, vecto
     X_title = vectorizer.transform(title_array)
     X_one = hstack([X_title, X_emb])
     f_train = lf.select(FEATURES).collect()
-    f_train_array = f_train.with_columns(pl.col(pl.Categorical).to_physical()).to_numpy()
+    f_train = f_train.with_columns(
+        pl.col(c).cast(pl.String).replace_strict(mapping[c], default=None, return_dtype=pl.Int64)
+        for c in mapping
+    )
+    f_train_array = f_train.to_numpy()
     X_one_full = hstack([csr_matrix(f_train_array), X_one]).tocsr()
     pred = booster.predict(X_one_full)
     return float(np.exp(pred[0]))
