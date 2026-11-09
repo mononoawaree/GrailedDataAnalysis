@@ -56,7 +56,7 @@ def train_lightgbm(train: pl.LazyFrame, test: pl.LazyFrame) -> np.ndarray:
     #!!!Breaks if csr_matrix(f_array) not first in hstack!!!
     regressor.fit(X_train_full, t_train_array, categorical_feature=[i for i, c in enumerate(FEATURES) if c in CATEGORICAL])
 
-    save_artifacts("D:\GrailedML\Model",regressor, vectorizer, pca, mapping)
+    save_artifacts(r"D:\GrailedML\TestModel",regressor, vectorizer, pca, mapping)
 
     names = FEATURES + vectorizer.get_feature_names_out().tolist() + [f'emb_{i}' for i in range(pca.n_components_)]
     imp = sorted(zip(names, regressor.feature_importances_), key=lambda x: -x[1])[:25]
@@ -77,14 +77,15 @@ def train_w_folds(df: pl.LazyFrame, start: datetime, end: datetime) -> list:
         y_pred = train_lightgbm(traindf, testdf)
         lookup = traindf.select(pl.col('title')).group_by(pl.col('title')).agg(pl.len().alias('count_title'))
         joined = testdf.join(lookup, on=["title"], how="left", maintain_order="left")
-        cols = joined.select(TARGET,'sold_price', 'is_archive', 'count_title').collect()
+        cols = joined.select(TARGET,'sold_price', 'is_archive', 'count_title', 'id').collect()
         fold = {
+            'id': cols['id'].to_numpy(),
             'y_true': cols[TARGET].to_numpy(),
             'y_pred': y_pred,
             'archive': cols['is_archive'].to_numpy(),
             'price': cols['sold_price'].to_numpy(),
             'title_count': cols['count_title'].to_numpy(),
-            'start': train_end.isoformat(),
+            'start': train_end.isoformat()
         }
         np.savez(f'../data/folds/embs_tfidf/{train_end.strftime('%Y-%m')}.npz', **fold)
         folds.append(fold)
