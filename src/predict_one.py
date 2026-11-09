@@ -21,41 +21,6 @@ from src.features import build_features, build_features_for_one, FEATURES
 schema = pl.read_parquet_schema("../data/parquets/sold_listings_20260901.parquet")
 
 PDT = timezone(timedelta(hours=-7))
-booster = lgb.Booster(model_file='file')
-
-test_row = {
-    "title": "YY 5019 Round Frame Black Sunglasses",
-    "department": "menswear",
-    "category": "accessories",
-    "category_path": "accessories.sunglasses",
-    "category_size": "accessories.one_size",
-    "category_path_size": "accessories.sunglasses.one_size",
-    "color": "black",
-    "condition": "is_new",
-    "size": "one size",
-    "styles": "avant-garde",
-    "country_of_origin": "IT",
-    "price": 100,
-    "sold_price": 100,
-    "sold_shipping_price": 20,
-    "sold": True,
-    "dropped": False,
-    "created_at": datetime(2026, 3, 18, 14, 49, 55, 38000, tzinfo=PDT),
-    "price_updated_at": datetime(2026, 3, 18, 14, 49, 55, 38000, tzinfo=PDT),
-    "cover_photo_url": "https://media-assets.grailed.com/prd/listing/temp/bba2acf1890c47fdabb2ea8edc2a236c",
-    "location": "United Kingdom",
-    "seller_id": 18167,
-    "seller_total_transactions": 4286,
-    "seller_trusted": True,
-    "seller_rating_average": 4.973104056437389,
-    "seller_rating_count": 1890,
-    "followers_count": 0,
-    "heat_score": 4479.274791666667,
-    "photo_count": 17,
-    "measurement_count": 0,
-    "external_id": 94069523,
-    "designer_names": ["Yohji Yamamoto"],
-}
 
 def predict_one(features: dict, pca: sklearn.decomposition.IncrementalPCA, vectorizer: TfidfVectorizer, booster: lgb.Booster, mapping: dict[str, dict[str, int]]) -> float:
     features_dict = {k: v for k, v in features.items() if k in schema}
