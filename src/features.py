@@ -32,8 +32,9 @@ ARCHIVELIST = ['Helmut Lang', 'Comme des Garcons', 'Junya Watanabe', 'Yohji Yama
 CATEGORICAL = ['department', 'category', 'path', 'color', 'condition', 'size', 'location', 'primary_designer']
 SEASON_YEAR = r'(?i)\b(?P<season>ss|s/s|fw|f/w|aw|a/w|spring[/\s-]?summer|fall[/\s-]?winter|autumn[/\s-]?winter)[/\s-]?(?P<year>(?:19|20)\d{2}|\d{2})\b'
 YEAR_ONLY = r'\b(?P<yearonly>19[89]\d|20[0-2]\d)\b'
+
 def build_features(df : pl.LazyFrame) -> pl.LazyFrame:
-    df = transform_data(df)
+    df = transform_data_for_train(df)
     df = cast_data(df)
     df = join_clip_embbeds(df, r"D:\GrailedML\Grailed_Npys\embeddings.npy",r"D:\GrailedML\Grailed_Npys\embeddings.npy")
     return df
@@ -68,7 +69,6 @@ def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
     df = df.with_columns(
         pl.col('title').str.to_lowercase(),
         pl.col('created_at').dt.month().alias('created_month'),
-        pl.col('sold_price').log().alias('log_sold_price')
     ).with_columns(
         pl.col('category_path').str.extract(r'\.(.+)', 1).alias('path'),
         pl.col('title').str.extract_groups(SEASON_YEAR).struct.field('season', 'year'),
@@ -97,6 +97,11 @@ def transform_data(df: pl.LazyFrame) -> pl.LazyFrame:
         pl.col('season').cast(pl.Categorical)
     )
     return df
+
+def transform_data_for_train(df: pl.LazyFrame) -> pl.LazyFrame:
+    return transform_data(df).with_columns(
+        pl.col("sold_price").log().alias("log_sold_price")
+    )
 
 def cast_data(df: pl.LazyFrame) -> pl.LazyFrame:
     df = df.with_columns(
