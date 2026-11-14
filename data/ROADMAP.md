@@ -36,7 +36,7 @@ Nearly every broken ML portfolio project violates one of these two.
 ## Column disposition
 
 Features are filtered in `src/features.py`, not in SQL. The Parquet carries everything cheap; one list in one file decides what the model sees, with reasons written next to it.
-
+asdasdasdas
 | Bucket | Columns |
 |---|---|
 | **Features (pre-listing)** | `title`, `department`, `category`, `category_path`, `category_size`, `size`, `styles`, `color`, `condition`, `country_of_origin`, `location`, `measurement_count`, `photo_count`\*, `designer_names` → collapsed (F7); seller profile: `seller_id`, `seller_total_transactions`, `seller_trusted`, `seller_rating_average`†, `seller_rating_count`† |

@@ -13,14 +13,12 @@ import sklearn
 import lightgbm as lgb
 from scipy.sparse import hstack, csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
-from datetime import datetime, timezone, timedelta
 
 from scripts.embedd_one import embedd_one
 from src.features import build_features, build_features_for_one, FEATURES
 
 schema = pl.read_parquet_schema("../data/parquets/sold_listings_20260901.parquet")
 
-PDT = timezone(timedelta(hours=-7))
 
 def predict_one(features: dict, pca: sklearn.decomposition.IncrementalPCA, vectorizer: TfidfVectorizer, booster: lgb.Booster, mapping: dict[str, dict[str, int]]) -> float:
     features_dict = {k: v for k, v in features.items() if k in schema}
@@ -31,6 +29,7 @@ def predict_one(features: dict, pca: sklearn.decomposition.IncrementalPCA, vecto
         pl.Series("fashion_clip_embeds", [emb], dtype=pl.Array(pl.Float32, 512)) # array[f32, 512]
     )
     lf = build_features_for_one(lf)
+    print(lf.collect())
     emb_array = lf.select(pl.col("fashion_clip_embeds")).collect().get_column("fashion_clip_embeds").to_numpy()
     title_array = lf.select(pl.col("title")).collect().get_column("title").to_numpy()
     X_emb = pca.transform(emb_array)

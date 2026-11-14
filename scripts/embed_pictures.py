@@ -12,7 +12,7 @@ ids_keys = df.select(pl.col('photo_key'), pl.col('id')).collect()
 ids = ids_keys['id'].to_numpy()
 keys = ids_keys['photo_key'].to_numpy()
 
-def main():
+def embedd_all():
     mm = np.lib.format.open_memmap(r'D:\Grailed_Npys\embeddings.npy', mode='w+', dtype=np.float16, shape=(len(ids), 512))
     model, _, preprocess = open_clip.create_model_and_transforms('hf-hub:Marqo/marqo-fashionCLIP')
     model.eval()
@@ -33,5 +33,6 @@ def main():
             ok_list.append(ok)
         mm.flush()
         np.save(r'D:\Grailed_Npys\ok.npy', torch.cat(ok_list).numpy())
-if __name__ == "__main__":
-    main()
+
+if __name__ == "embedd_all":
+    embedd_all()

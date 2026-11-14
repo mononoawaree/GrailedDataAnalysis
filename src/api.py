@@ -44,4 +44,4 @@ def predict(listing: Listing):
                             state["vectorizer"], state["cats"])
     except RuntimeError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    return {"predicted_price": round(price, 2)}
+    return {"predictedp_rice": round(price, 2)}

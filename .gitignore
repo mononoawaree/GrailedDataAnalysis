@@ -1,8 +1,9 @@
 .env
-sklearn-env
+sklearn-env/
 data/parquets/*.parquet
 data/*.npy
 data/folds/*.npz
 data/DECISIONS.md
 scripts/__pycache__/*.pyc
 src/__pycache__/*.pyc
+.venv/
