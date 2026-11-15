@@ -13,35 +13,34 @@ state = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    state["booster"] = lgb.Booster(model_file="data/artifacts/model.txt")
-    state["pca"] = joblib.load("data/artifacts/pca.joblib")
-    state["vectorizer"] = joblib.load("data/artifacts/vectorizer.joblib")
-    state["cats"] = json.load(open("data/artifacts/cat_mapping.json"))
+    state["booster"] = lgb.Booster(model_file=r"D:\GrailedML\TestModel/model.txt")
+    state["pca"] = joblib.load(r"D:\GrailedML\TestModel/pca.joblib")
+    state["vectorizer"] = joblib.load(r"D:\GrailedML\TestModel/vectorizer.joblib")
+    state["cats"] = json.load(open(r"D:\GrailedML\TestModel/cat_mapping.json"))
     yield
 
 app = FastAPI(lifespan=lifespan)
 
 class Listing(BaseModel):
     title: str
-    cover_photo_url: str
     department: str
     category: str
     category_path: str
-    designer_names: list[str]
-    condition: str
-    created_at: datetime
     color: str | None = None
+    condition: str
     size: str | None = None
+    created_at: datetime
+    cover_photo_url: str
     location: str | None = None
     photo_count: int = 0
     measurement_count: int = 0
-
+    designer_names: list[str]
 
 @app.post("/predict")
 def predict(listing: Listing):
     try:
-        price = predict_one(listing.model_dump(), state["booster"], state["pca"],
-                            state["vectorizer"], state["cats"])
+        price = predict_one(listing.model_dump(), pca=state["pca"], vectorizer=state["vectorizer"],
+                            booster=state["booster"], mapping=state["cats"])
     except RuntimeError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    return {"predictedp_rice": round(price, 2)}
+    return {"predicted_price": round(price, 2)}
