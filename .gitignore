@@ -7,3 +7,13 @@ data/DECISIONS.md
 scripts/__pycache__/*.pyc
 src/__pycache__/*.pyc
 .venv/
+.idea/compiler.xml
+.idea/gradle.xml
+.idea/libraries/
+.idea/modules/
+inference/__pycache__/
+.idea/GrailedDataAnalysis.iml
+.idea/misc.xml
+.idea/modules.xml
+
+
