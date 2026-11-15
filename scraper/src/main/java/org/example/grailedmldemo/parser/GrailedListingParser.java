@@ -3,11 +3,13 @@ package org.example.grailedmldemo.parser;
 import com.google.gson.*;
 import org.example.grailedmldemo.exception.ParseException;
 import org.example.grailedmldemo.model.GrailedListingRaw;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
 //Using gson for JSON parsing of Grailed listing pages to extract relevant data fields (title, price, brand, etc.)
+@Component
 public class GrailedListingParser implements Parser {
     Gson gson = new Gson();
     // Extracts the "hits" (info) array from the Algolia response
@@ -24,5 +26,14 @@ public class GrailedListingParser implements Parser {
             grailedListingRaws.add(listing);
         }
         return grailedListingRaws;
+    }
+
+    public GrailedListingRaw parseOne(String rawJson) throws ParseException {
+        JsonObject jsonObject = JsonParser.parseString(rawJson).getAsJsonObject();
+        JsonArray results = jsonObject.getAsJsonArray("results");
+        JsonObject firstResult = results.get(0).getAsJsonObject();
+        JsonArray hit = firstResult.getAsJsonArray("hits");
+        GrailedListingRaw grailedListingRaw = gson.fromJson(hit.get(0).getAsJsonObject(), GrailedListingRaw.class);
+        return grailedListingRaw;
     }
 }
