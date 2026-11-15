@@ -2,6 +2,9 @@ package org.example.grailedmldemo.normalizer;
 
 import org.example.grailedmldemo.model.GrailedListingRaw;
 import org.example.grailedmldemo.model.Listing;
+import org.example.grailedmldemo.model.ListingForPrediction;
+
+import java.util.List;
 
 //normalize scraped data into a structured format suitable for storage and analysis.
 public class GrailedListingNormalizer implements Normalizer<GrailedListingRaw> {
@@ -96,5 +99,33 @@ public class GrailedListingNormalizer implements Normalizer<GrailedListingRaw> {
             listing.setSellerRatingCount(0);
         }
         return listing;
+    }
+
+    public ListingForPrediction normalizeForPrediction(GrailedListingRaw raw) {
+        Listing l = normalize(raw);
+
+        List<String> designerNames = raw.getDesigners().stream()
+                .map(d -> d.getName())
+                .toList();
+
+        String photoUrl = raw.getCover_photo() != null
+                ? raw.getCover_photo().getUrl()
+                : null;
+
+        return ListingForPrediction.builder()
+                .title(l.getTitle())
+                .department(l.getDepartment())
+                .category(l.getCategory())
+                .categoryPath(l.getCategoryPath())
+                .designerNames(designerNames)
+                .color(l.getColor())
+                .condition(l.getCondition())
+                .size(l.getSize())
+                .location(l.getLocation())
+                .createdAt(l.getCreatedAt())
+                .coverPhotoUrl(photoUrl)
+                .photoCount(l.getPhotoCount())
+                .measurementCount(l.getMeasurementCount())
+                .build();
     }
 }
