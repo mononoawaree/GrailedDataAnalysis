@@ -2,12 +2,15 @@ package org.example.grailedmldemo.model;
 
 import lombok.Builder;
 import lombok.Data;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 
 import java.util.List;
 
 @Builder
 @Data
-public class ListingForPrediction {
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class PredictionInput {
 
     private String title;
     private String department;
