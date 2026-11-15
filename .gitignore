@@ -15,5 +15,5 @@ inference/__pycache__/
 .idea/GrailedDataAnalysis.iml
 .idea/misc.xml
 .idea/modules.xml
-
+scraper/build.gradle
 
