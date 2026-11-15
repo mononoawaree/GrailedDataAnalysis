@@ -2,11 +2,13 @@ package org.example.grailedmldemo.normalizer;
 
 import org.example.grailedmldemo.model.GrailedListingRaw;
 import org.example.grailedmldemo.model.Listing;
-import org.example.grailedmldemo.model.ListingForPrediction;
+import org.example.grailedmldemo.model.PredictionInput;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 //normalize scraped data into a structured format suitable for storage and analysis.
+@Component
 public class GrailedListingNormalizer implements Normalizer<GrailedListingRaw> {
 
     @Override
@@ -101,7 +103,7 @@ public class GrailedListingNormalizer implements Normalizer<GrailedListingRaw> {
         return listing;
     }
 
-    public ListingForPrediction normalizeForPrediction(GrailedListingRaw raw) {
+    public PredictionInput normalizeForPrediction(GrailedListingRaw raw) {
         Listing l = normalize(raw);
 
         List<String> designerNames = raw.getDesigners().stream()
@@ -112,7 +114,7 @@ public class GrailedListingNormalizer implements Normalizer<GrailedListingRaw> {
                 ? raw.getCover_photo().getUrl()
                 : null;
 
-        return ListingForPrediction.builder()
+        return PredictionInput.builder()
                 .title(l.getTitle())
                 .department(l.getDepartment())
                 .category(l.getCategory())
