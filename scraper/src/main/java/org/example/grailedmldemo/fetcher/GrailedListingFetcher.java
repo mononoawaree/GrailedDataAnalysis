@@ -2,6 +2,9 @@ package org.example.grailedmldemo.fetcher;
 
 import okhttp3.*;
 import org.example.grailedmldemo.exception.FetchException;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +14,7 @@ import java.util.regex.Pattern;
 
 //implementation (uses OkHttp) of the fetcher interface to retrieve HTML content from Grailed listing pages. This class will handle the HTTP requests and responses, including error handling and retries if necessary.
 // It may also include logic for handling rate limits or using proxies if required by the Grailed API or website.
+@Component
 public class GrailedListingFetcher implements Fetcher {
     private final OkHttpClient client;
     private final String baseUrl;
@@ -18,7 +22,7 @@ public class GrailedListingFetcher implements Fetcher {
     private final String appId;
     private Long maxSoldAt;
 
-    public GrailedListingFetcher(OkHttpClient client, String baseUrl, String apiKey, String appId) {
+    public GrailedListingFetcher(OkHttpClient client, @Value("${base.url}") String baseUrl, @Value("${x-algolia-api-key}") String apiKey, @Value("${x-algolia-api-id}") String appId) {
         this.client = client;
         this.baseUrl = baseUrl;
         this.apiKey = apiKey;
