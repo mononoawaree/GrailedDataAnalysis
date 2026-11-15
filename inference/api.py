@@ -13,10 +13,10 @@ state = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    state["booster"] = lgb.Booster(model_file="artifacts/model.txt")
-    state["pca"] = joblib.load("artifacts/pca.joblib")
-    state["vectorizer"] = joblib.load("artifacts/tfidf.joblib")
-    state["cats"] = json.load(open("artifacts/cats.json"))
+    state["booster"] = lgb.Booster(model_file="data/artifacts/model.txt")
+    state["pca"] = joblib.load("data/artifacts/pca.joblib")
+    state["vectorizer"] = joblib.load("data/artifacts/vectorizer.joblib")
+    state["cats"] = json.load(open("data/artifacts/cat_mapping.json"))
     yield
 
 app = FastAPI(lifespan=lifespan)
