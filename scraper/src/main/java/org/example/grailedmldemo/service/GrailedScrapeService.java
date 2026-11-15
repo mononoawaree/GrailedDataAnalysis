@@ -1,7 +1,5 @@
 package org.example.grailedmldemo.service;
 import okhttp3.OkHttpClient;
-import org.example.grailedmldemo.config.AlgoliaConfig;
-import org.example.grailedmldemo.config.GrailedApiConfig;
 import org.example.grailedmldemo.exception.FetchException;
 import org.example.grailedmldemo.exception.ParseException;
 import org.example.grailedmldemo.fetcher.GrailedDesignerFetcher;
@@ -30,14 +28,14 @@ public class GrailedScrapeService {
     private final GrailedListingNormalizer grailedListingNormalizer;
     private final ListingRepository listingRepository;
     private final DesignerRepository designerRepository;
-    private final String baseUrl = AlgoliaConfig.getBaseUrl();
-    private final String designersUrl = GrailedApiConfig.getDesignersUrl();
-    private final String apiKey = AlgoliaConfig.getApiKey();
-    private final String appId = AlgoliaConfig.getAppId();
-    private final OkHttpClient client = new OkHttpClient();
+    private final String baseUrl;
+    private final String designersUrl = " "; // !!!!!!!!!!
+    private final String apiKey;
+    private final String appId;
+    private final OkHttpClient client;
     private final DataSource ds;
 
-    public GrailedScrapeService(GrailedListingFetcher grailedListingFetcher, GrailedDesignerFetcher grailedDesignerFetcher, GrailedDesignerParser grailedDesignerParser, GrailedListingParser grailedListingParser, GrailedListingNormalizer grailedListingNormalizer, ListingRepository listingRepository, DesignerRepository designerRepository, DataSource ds) {
+    public GrailedScrapeService(GrailedListingFetcher grailedListingFetcher, GrailedDesignerFetcher grailedDesignerFetcher, GrailedDesignerParser grailedDesignerParser, GrailedListingParser grailedListingParser, GrailedListingNormalizer grailedListingNormalizer, ListingRepository listingRepository, DesignerRepository designerRepository, DataSource ds, String getBaseUrl, String fetApiKey, String getAppId, OkHttpClient client) {
         this.grailedListingFetcher = grailedListingFetcher;
         this.grailedDesignerFetcher = grailedDesignerFetcher;
         this.grailedDesignerParser = grailedDesignerParser;
@@ -46,6 +44,10 @@ public class GrailedScrapeService {
         this.listingRepository = listingRepository;
         this.designerRepository = designerRepository;
         this.ds = ds;
+        this.baseUrl = getBaseUrl;
+        this.apiKey = getAppId;
+        this.appId = getAppId;
+        this.client = client;
     }
 
     public void scrapeAll() throws IOException, FetchException, SQLException, ParseException {
