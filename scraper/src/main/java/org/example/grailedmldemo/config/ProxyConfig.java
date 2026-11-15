@@ -7,7 +7,7 @@ public class ProxyConfig {
     private static final Properties props = new Properties();
     static {
         try {
-            props.load(AlgoliaConfig.class
+            props.load(ProxyConfig.class
                     .getClassLoader()
                     .getResourceAsStream("application.properties"));
         } catch (IOException e) {
